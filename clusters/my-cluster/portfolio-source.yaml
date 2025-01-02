@@ -3,9 +3,9 @@ apiVersion: source.toolkit.fluxcd.io/v1
 kind: GitRepository
 metadata:
   name: portfolio
-  namespace: portfolio
+  namespace: flux-system
 spec:
   interval: 5m0s
-  url: ssh://git@gitlab.com/jacobmbanghart/astro-portfolio
   ref:
     branch: master
+  url: ssh://git@gitlab.com/jacobmbanghart/astro-portfolio
