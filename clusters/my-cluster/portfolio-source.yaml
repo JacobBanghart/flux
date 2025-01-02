@@ -38,6 +38,7 @@ spec:
   interval: 5m
   secretRef:
     name: regcred
+    namespace: default
 ---
 apiVersion: image.toolkit.fluxcd.io/v1beta2
 kind: ImagePolicy
