@@ -36,9 +36,9 @@ metadata:
 spec:
   image: registry.gitlab.com/jacobmbanghart/astro-portfolio
   interval: 5m
-secretRef:
-  name: regcred
-  namespace: default
+  secretRef:
+    name: regcred
+    namespace: default
 ---
 apiVersion: image.toolkit.fluxcd.io/v1beta2
 kind: ImagePolicy
