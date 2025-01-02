@@ -1,0 +1,11 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: portfolio
+  namespace: portfolio
+spec:
+  interval: 5m0s
+  url: https://gitlab.com/jacobmbanghart/astro-portfolio
+  ref:
+    branch: master
