@@ -9,3 +9,5 @@ spec:
   ref:
     branch: master
   url: ssh://git@gitlab.com/jacobmbanghart/astro-portfolio
+  secretRef:
+    name: flux-ssh-key
