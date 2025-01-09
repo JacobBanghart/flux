@@ -76,10 +76,10 @@ persistence:
 deployment:
   labels:
     release: prometheus
-  podAnnotations:
-    prometheus.io/scrape: "true"
-    prometheus.io/path: /metrics
-    prometheus.io/port: "9100"
+  # podAnnotations:
+  #   prometheus.io/scrape: "true"
+  #   prometheus.io/path: /metrics
+  #   prometheus.io/port: "9100"
   podLabels:
     release: prometheus
   initContainers:
