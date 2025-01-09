@@ -9,6 +9,7 @@ metadata:
   name: traefik
   namespace: traefik
 spec:
+  type: "oci"
   interval: 30m
   url: oci://ghcr.io/traefik/helm/traefik
 ---
