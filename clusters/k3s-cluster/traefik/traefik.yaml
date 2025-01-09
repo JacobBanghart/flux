@@ -28,7 +28,7 @@ spec:
         name: immich
       interval: 30m
   valuesFiles:
-    - treafik-values.yaml
+    - ./traefik-values.yaml
 ---
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
