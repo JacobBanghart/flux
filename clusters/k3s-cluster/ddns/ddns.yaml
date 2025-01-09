@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ddns
+  namespace: ddns
+spec:
+  selector:
+    matchLabels:
+      app: ddns
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ddns
+    spec:
+      containers:
+        - name: ddns
+          image: oznu/cloudflare-ddns:latest
+          env:
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-credentials
+                  key: apiKey
+            - name: ZONE
+              value: jacobbanghart.com
+            - name: PROXIED
+              value: "false"
+            - name: SUBDOMAIN
+              value: "*"
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+        - name: ddns2
+          image: oznu/cloudflare-ddns:latest
+          env:
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-credentials
+                  key: apiKey
+            - name: ZONE
+              value: jacobbanghart.com
+            - name: PROXIED
+              value: "false"
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
