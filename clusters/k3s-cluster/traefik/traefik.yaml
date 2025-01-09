@@ -9,9 +9,8 @@ metadata:
   name: traefik
   namespace: traefik
 spec:
-  type: "oci"
   interval: 30m
-  url: oci://ghcr.io/traefik/helm/traefik
+  url: https://traefik.github.io/charts
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2beta1
 kind: HelmRelease
