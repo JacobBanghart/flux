@@ -6,7 +6,7 @@ metadata:
 apiVersion: v1
 kind: Service
 metadata:
-  name: mealie-svc
+  name: mealie
   namespace: mealie
 spec:
   type: ClusterIP
@@ -17,7 +17,7 @@ spec:
 apiVersion: v1
 kind: Endpoints
 metadata:
-  name: mealie-endpoint
+  name: mealie
   namespace: mealie
 subsets:
   - addresses:
@@ -28,10 +28,10 @@ subsets:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: mealie-ingress
+  name: mealie
   namespace: mealie
   labels:
-    name: mealie-ingress
+    name: mealie
 spec:
   rules:
     - host: mealie.jacobbanghart.com
@@ -41,6 +41,6 @@ spec:
             path: "/"
             backend:
               service:
-                name: mealie-svc
+                name: mealie
                 port:
                   number: 18006

@@ -6,7 +6,7 @@ metadata:
 apiVersion: v1
 kind: Service
 metadata:
-  name: files-svc
+  name: files
   namespace: files
 spec:
   type: ClusterIP
@@ -17,7 +17,7 @@ spec:
 apiVersion: v1
 kind: Endpoints
 metadata:
-  name: files-endpoint
+  name: files
   namespace: files
 subsets:
   - addresses:
@@ -28,10 +28,10 @@ subsets:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: files-ingress
+  name: files
   namespace: files
   labels:
-    name: files-ingress
+    name: files
 spec:
   rules:
     - host: files.jacobbanghart.com
@@ -41,6 +41,6 @@ spec:
             path: "/"
             backend:
               service:
-                name: files-svc
+                name: files
                 port:
                   number: 8080

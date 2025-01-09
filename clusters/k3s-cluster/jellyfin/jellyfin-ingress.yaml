@@ -6,7 +6,7 @@ metadata:
 apiVersion: v1
 kind: Service
 metadata:
-  name: jellyfin-svc
+  name: jellyfin
   namespace: jellyfin
 spec:
   type: ClusterIP
@@ -17,7 +17,7 @@ spec:
 apiVersion: v1
 kind: Endpoints
 metadata:
-  name: jellyfin-endpoint
+  name: jellyfin
   namespace: jellyfin
 subsets:
   - addresses:
@@ -28,10 +28,10 @@ subsets:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: jellyfin-ingress
+  name: jellyfin
   namespace: jellyfin
   labels:
-    name: jellyfin-ingress
+    name: jellyfin
 spec:
   rules:
     - host: jellyfin.jacobbanghart.com
@@ -41,6 +41,6 @@ spec:
             path: "/"
             backend:
               service:
-                name: jellyfin-svc
+                name: jellyfin
                 port:
                   number: 8096
