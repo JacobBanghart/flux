@@ -27,9 +27,9 @@ spec:
         kind: HelmRepository
         name: traefik
       interval: 5m
-  valuesFile:
-    - values.yaml
-
+  valuesFrom:
+    - kind: ConfigMap
+      name: traefik-values
 ---
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
