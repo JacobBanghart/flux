@@ -74,14 +74,6 @@ persistence:
   path: /ssl-certs
 
 deployment:
-  labels:
-    release: prometheus
-  # podAnnotations:
-  #   prometheus.io/scrape: "true"
-  #   prometheus.io/path: /metrics
-  #   prometheus.io/port: "9100"
-  podLabels:
-    release: prometheus
   initContainers:
     # The "volume-permissions" init container is required if you run into permission issues.
     # Related issue: https://github.com/containous/traefik/issues/6972
