@@ -9,7 +9,7 @@ metadata:
   name: traefik
   namespace: traefik
 spec:
-  interval: 30m
+  interval: 5m
   url: https://traefik.github.io/charts
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2beta1
@@ -18,7 +18,7 @@ metadata:
   name: traefik
   namespace: traefik
 spec:
-  interval: 30m
+  interval: 5m
   chart:
     spec:
       chart: traefik
@@ -26,7 +26,7 @@ spec:
       sourceRef:
         kind: HelmRepository
         name: immich
-      interval: 30m
+      interval: 5m
   values:
     additionalArguments:
       # Configure your CertificateResolver here...
