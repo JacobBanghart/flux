@@ -31,7 +31,7 @@ spec:
     ingress:
       enabled: true
       hosts:
-      - host: ollama.domain.lan
+      - host: ollama.jacobbanghart.com
         paths:
           - path: /
             pathType: Prefix
