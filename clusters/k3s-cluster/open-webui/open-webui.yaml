@@ -29,7 +29,7 @@ spec:
       interval: 5m
   values:
     ollamaUrls:
-      - ollama.jacobbanghart.com
+      - https://ollama.jacobbanghart.com
     ollama:
       enabled: false
     ingress:
