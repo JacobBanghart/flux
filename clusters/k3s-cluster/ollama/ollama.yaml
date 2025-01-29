@@ -35,3 +35,8 @@ spec:
         paths:
           - path: /
             pathType: Prefix
+    ollama:
+      models:
+        pull:
+          - CognitiveComputations/dolphin-llama3.1
+          - deepseek-r1:7b
