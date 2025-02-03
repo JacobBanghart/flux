@@ -78,7 +78,7 @@ metadata:
   namespace: immich
 spec:
   rules:
-    - host: immich.jacobbanghart.com
+    - host: photos.jacobbanghart.com
       http:
         paths:
           - pathType: Prefix
