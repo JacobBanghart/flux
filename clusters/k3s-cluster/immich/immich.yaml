@@ -30,6 +30,7 @@ spec:
   accessModes:
     - ReadWriteMany
   storageClassName: ""
+  volumeName: immichpv
 ---
 apiVersion: source.toolkit.fluxcd.io/v1beta1
 kind: HelmRepository
