@@ -69,6 +69,8 @@ spec:
       enabled: true
     redis:
       enabled: true
+      auth:
+        enabled: true
     useDeprecatedPostgresChart: true
 # ---
 # apiVersion: networking.k8s.io/v1
