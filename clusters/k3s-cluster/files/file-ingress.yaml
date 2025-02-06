@@ -4,26 +4,144 @@ metadata:
   name: files
 ---
 apiVersion: v1
+kind: PersistentVolume
+metadata:
+  namespace: files
+  name: srvfilespv
+spec:
+  capacity:
+    storage: 200Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    server: truenas.home
+    path: /mnt/BasicPool/Filebrowser/srv
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  namespace: files
+  name: databasefilespv
+spec:
+  capacity:
+    storage: 200Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    server: truenas.home
+    path: /mnt/BasicPool/Filebrowser/database
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  namespace: files
+  name: configfilespv
+spec:
+  capacity:
+    storage: 200Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    server: truenas.home
+    path: /mnt/BasicPool/Filebrowser/config
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: files
+  name: srvfilespvc
+spec:
+  resources:
+    requests:
+      storage: 200Gi
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  volumeName: srvfilespv
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: files
+  name: databasefilespvc
+spec:
+  resources:
+    requests:
+      storage: 200Gi
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  volumeName: databasefilespv
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: files
+  name: configfilespvc
+spec:
+  resources:
+    requests:
+      storage: 200Gi
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  volumeName: configfilespv
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: files
+spec:
+  selector:
+    matchLabels:
+      app: files
+  template:
+    metadata:
+      labels:
+        app: files
+    spec:
+      containers:
+        - name: files
+          image: filebrowser/filebrowser:s6
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - mountPath: /srv
+              name: srvpvc
+            - mountPath: /database
+              name: databasepvc
+            - mountPath: /config
+              name: configpvc
+      volumes:
+        - name: srvpvc
+          persistentVolumeClaim:
+            claimName: srvfilespvc
+        - name: databasepvc
+          persistentVolumeClaim:
+            claimName: databasefilespvc
+        - name: configpvc
+          persistentVolumeClaim:
+            claimName: configfilespvc
+---
+apiVersion: v1
 kind: Service
 metadata:
   name: files
-  namespace: files
 spec:
-  type: ClusterIP
+  selector:
+    app: files
   ports:
-    - port: 8080
-      targetPort: 8080
----
-apiVersion: v1
-kind: Endpoints
-metadata:
-  name: files
-  namespace: files
-subsets:
-  - addresses:
-      - ip: 192.168.1.99
-    ports:
-      - port: 8080
+    - port: 55964
+      targetPort: 80
+      name: files
+
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -43,4 +161,4 @@ spec:
               service:
                 name: files
                 port:
-                  number: 8080
+                  number: 55964
