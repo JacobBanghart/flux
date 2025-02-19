@@ -94,6 +94,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: files
+  namespace: files
 spec:
   selector:
     matchLabels:
