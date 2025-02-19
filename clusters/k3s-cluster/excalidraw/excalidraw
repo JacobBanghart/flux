@@ -7,6 +7,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: excalidraw
+  namespace: excalidraw
 spec:
   selector:
     matchLabels:
@@ -30,6 +31,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: excalidraw
+  namespace: excalidraw
 spec:
   selector:
     app: excalidraw
