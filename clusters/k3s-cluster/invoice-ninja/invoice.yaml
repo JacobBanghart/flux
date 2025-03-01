@@ -1,0 +1,153 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: invoice-ninja
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  namespace: invoice-ninja
+  name: ivpublicpv
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    server: truenas.home
+    path: /mnt/BasicPool/kubernetes/invoice-ninja/public
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  namespace: invoice-ninja
+  name: ivstoragepv
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    server: truenas.home
+    path: /mnt/BasicPool/kubernetes/invoice-ninja/storage
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  namespace: invoice-ninja
+  name: ivmariapv
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    server: truenas.home
+    path: /mnt/BasicPool/kubernetes/invoice-ninja/mariadb
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: invoice-ninja
+  name: ivpublicpvc
+spec:
+  resources:
+    requests:
+      storage: 100Gi
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  volumeName: ivpublicpv
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: invoice-ninja
+  name: ivstoragepvc
+spec:
+  resources:
+    requests:
+      storage: 100Gi
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  volumeName: ivstoragepv
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: invoice-ninja
+  name: ivmariapvc
+spec:
+  resources:
+    requests:
+      storage: 100Gi
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  volumeName: ivmariapv
+---
+apiVersion: source.toolkit.fluxcd.io/v1beta1
+kind: HelmRepository
+metadata:
+  name: invoice-ninja-hc
+  namespace: invoice-ninja
+spec:
+  interval: 5m
+  url: https://invoiceninja.github.io/dockerfiles
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: invoice-ninja-hc
+  namespace: invoice-ninja
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: invoiceninja
+      version: 0.10.2
+      sourceRef:
+        kind: HelmRepository
+        name: invoiceninja
+      interval: 5m
+  values:
+    appURL: https://invoice-ninja.jacobbanghart.com
+    ingress:
+      hostname: invoice-ninja.jacobbanghart.com
+    nginx:
+      ingress:
+        hostname: invoice-ninja.jacobbanghart.com
+    persistence:
+      public:
+        existingClaim: ivpublicpvc
+      storage:
+        existingClaim: ivstoragepvc
+    mariadb:
+      primary:
+        persistence:
+          existingClaim: ivmariapvc
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: invoice-ninja-ingress
+  namespace: invoice-ninja
+  labels:
+    name: invoice-ninja-ingress
+spec:
+  rules:
+    - host: invoice-ninja.jacobbanghart.com
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: invoiceninja-web
+                port:
+                  number: 8080
