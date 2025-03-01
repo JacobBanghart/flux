@@ -4,26 +4,145 @@ metadata:
   name: jellyfin
 ---
 apiVersion: v1
+kind: PersistentVolume
+metadata:
+  namespace: jellyfin
+  name: jellyfinmoviespv
+spec:
+  capacity:
+    storage: 4Ti
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    server: truenas.home
+    path: /mnt/BasicPool/Jellyfin/movies
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  namespace: jellyfin
+  name: jellyfintvpv
+spec:
+  capacity:
+    storage: 4Ti
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    server: truenas.home
+    path: /mnt/BasicPool/Jellyfin/tv
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  namespace: jellyfin
+  name: jellyfinconfigpv
+spec:
+  capacity:
+    storage: 4Ti
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    server: truenas.home
+    path: /mnt/BasicPool/appdata/jellyfin
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: jellyfin
+  name: jellyfinmoviespvc
+spec:
+  resources:
+    requests:
+      storage: 4Ti
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  volumeName: jellyfinmoviespv
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: jellyfin
+  name: jellyfintvpvc
+spec:
+  resources:
+    requests:
+      storage: 4Ti
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  volumeName: jellyfintvpv
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: jellyfin
+  name: jellyfinconfigpvc
+spec:
+  resources:
+    requests:
+      storage: 4Ti
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  volumeName: jellyfinconfigpv
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jellyfin
+  namespace: jellyfin
+spec:
+  selector:
+    matchLabels:
+      app: jellyfin
+  template:
+    metadata:
+      labels:
+        app: jellyfin
+    spec:
+      containers:
+        - name: jellyfin
+          image: lscr.io/linuxserver/jellyfin:latest
+          resources:
+            limits:
+              memory: "2Gi"
+              cpu: "2"
+          ports:
+            - containerPort: 8096
+          volumeMounts:
+            - mountPath: /config
+              name: jellyfinconfigpvc
+            - mountPath: /data/tvshows
+              name: jellyfintvpvc
+            - mountPath: /data/movies
+              name: jellyfinmoviespvc
+      volumes:
+        - name: jellyfinmoviespvc
+          persistentVolumeClaim:
+            claimName: jellyfinmoviespvc
+        - name: jellyfintvpvc
+          persistentVolumeClaim:
+            claimName: jellyfintvpvc
+        - name: jellyfinconfigpvc
+          persistentVolumeClaim:
+            claimName: jellyfinconfigpvc
+---
+apiVersion: v1
 kind: Service
 metadata:
   name: jellyfin
   namespace: jellyfin
 spec:
-  type: ClusterIP
+  selector:
+    app: jellyfin
   ports:
     - port: 8096
       targetPort: 8096
----
-apiVersion: v1
-kind: Endpoints
-metadata:
-  name: jellyfin
-  namespace: jellyfin
-subsets:
-  - addresses:
-      - ip: 192.168.1.99
-    ports:
-      - port: 8096
+      name: jellyfin
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
