@@ -112,7 +112,7 @@ spec:
       version: 0.10.2
       sourceRef:
         kind: HelmRepository
-        name: invoiceninja
+        name: invoice-ninja-hc
       interval: 5m
   values:
     appURL: https://invoice-ninja.jacobbanghart.com
@@ -131,7 +131,6 @@ spec:
         persistence:
           existingClaim: ivmariapvc
 ---
-
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
