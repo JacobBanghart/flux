@@ -58,6 +58,9 @@ spec:
           volumeMounts:
             - mountPath: /app/data
               name: mealiepvc
+          env:
+            - name: BASE_URL
+              value: https://mealie.jacobbanghart.com/
       volumes:
         - name: mealiepvc
           persistentVolumeClaim:
