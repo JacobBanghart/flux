@@ -4,26 +4,75 @@ metadata:
   name: mealie
 ---
 apiVersion: v1
+kind: PersistentVolume
+metadata:
+  namespace: mealie
+  name: mealiepv
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    server: truenas.home
+    path: /mnt/BasicPool/kubernetes/mealie
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mealiepvc
+  namespace: mealie
+spec:
+  resources:
+    requests:
+      storage: 50Gi
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  volumeName: mealiepv
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mealie
+spec:
+  selector:
+    matchLabels:
+      app: mealie
+  template:
+    metadata:
+      labels:
+        app: mealie
+    spec:
+      containers:
+        - name: mealie
+          image: ghcr.io/mealie-recipes/mealie:v2.7.1
+          resources:
+            limits:
+              memory: "1024Mi"
+              cpu: "500m"
+          ports:
+            - containerPort: 9000
+          volumeMounts:
+            - mountPath: /app/data
+              name: mealiepvc
+      volumes:
+        - name: mealiepvc
+          persistentVolumeClaim:
+            claimName: mealiepvc
+---
+apiVersion: v1
 kind: Service
 metadata:
   name: mealie
-  namespace: mealie
 spec:
-  type: ClusterIP
+  selector:
+    app: mealie
   ports:
-    - port: 18006
-      targetPort: 18006
----
-apiVersion: v1
-kind: Endpoints
-metadata:
-  name: mealie
-  namespace: mealie
-subsets:
-  - addresses:
-      - ip: 192.168.1.34
-    ports:
-      - port: 18006
+    - port: 9000
+      targetPort: 9000
+
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -43,4 +92,4 @@ spec:
               service:
                 name: mealie
                 port:
-                  number: 18006
+                  number: 9000
