@@ -108,6 +108,9 @@ spec:
         - name: files
           image: filebrowser/filebrowser:s6
           resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
             limits:
               memory: "512Mi"
               cpu: "500m"

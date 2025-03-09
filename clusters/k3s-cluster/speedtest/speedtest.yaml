@@ -31,14 +31,17 @@ spec:
         app: speedtest
     spec:
       containers:
-      - name: speedtest
-        image: openspeedtest/latest:v2.0.4
-        resources:
-          limits:
-            memory: "500Mi"
-            cpu: "1000m"
-        ports:
-        - containerPort: 3000
+        - name: speedtest
+          image: openspeedtest/latest:v2.0.4
+          resources:
+            requests:
+              memory: "100Mi"
+              cpu: "100m"
+            limits:
+              memory: "500Mi"
+              cpu: "1000m"
+          ports:
+            - containerPort: 3000
 ---
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
@@ -73,4 +76,3 @@ spec:
                 name: speedtest
                 port:
                   number: 3000
-

@@ -33,6 +33,9 @@ spec:
               value: "false"
             - name: SUBDOMAIN
               value: "*"
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
           resources:
             limits:
               memory: "128Mi"
@@ -49,6 +52,9 @@ spec:
               value: jacobbanghart.com
             - name: PROXIED
               value: "false"
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
           resources:
             limits:
               memory: "128Mi"

@@ -50,6 +50,9 @@ spec:
         - name: mealie
           image: ghcr.io/mealie-recipes/mealie:v2.7.1
           resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
             limits:
               memory: "1024Mi"
               cpu: "500m"

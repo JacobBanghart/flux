@@ -108,6 +108,9 @@ spec:
         - name: jellyfin
           image: lscr.io/linuxserver/jellyfin:latest
           resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
             limits:
               memory: "2Gi"
               cpu: "2"

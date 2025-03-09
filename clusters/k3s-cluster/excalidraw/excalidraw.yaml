@@ -21,6 +21,9 @@ spec:
         - name: excalidraw
           image: excalidraw/excalidraw:latest
           resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
             limits:
               memory: "512Mi"
               cpu: "500m"
