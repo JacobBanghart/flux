@@ -39,7 +39,7 @@ spec:
           resources:
             limits:
               memory: "128Mi"
-              cpu: "500m"
+              cpu: "128m"
         - name: ddns2
           image: oznu/cloudflare-ddns:latest
           env:
@@ -58,4 +58,4 @@ spec:
           resources:
             limits:
               memory: "128Mi"
-              cpu: "500m"
+              cpu: "128m"
