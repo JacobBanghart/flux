@@ -36,6 +36,7 @@ spec:
     domain-filter: jacobbanghart.com
     cloudflare:
       dnsRecordsPerPage: 5000
+      proxied: false
     extraEnvVars:
       - name: CF_API_KEY
         valueFrom:
