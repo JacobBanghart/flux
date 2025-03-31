@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: external-dns
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: external-dns-repo
+  namespace: external-dns
+spec:
+  interval: 5m0s
+  url: oci://registry-1.docker.io/bitnamicharts
+  type: oci
+  provider: generic
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: external-dns-release
+  namespace: external-dns
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: external-dns
+      version: 8.7.8
+      sourceRef:
+        kind: HelmRepository
+        name: external-dns-repo
+        namespace: external-dns
+      interval: 10m
+  values:
+    provider: cloudflare
+    source: ingress
+    domain-filter: jacobbanghart.com
+    cloudflare:
+      dnsRecordsPerPage: 5000
+    extraEnvVars:
+      - name: CF_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: cloudflare-credentials
+            key: apiKey
+      - name: CF_API_EMAIL
+        valueFrom:
+          secretKeyRef:
+            name: cloudflare-credentials
+            key: email
