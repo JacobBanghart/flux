@@ -32,7 +32,7 @@ spec:
       interval: 10m
   values:
     provider: cloudflare
-    source: ingress
+    source: ingress,service
     domain-filter: jacobbanghart.com
     cloudflare:
       dnsRecordsPerPage: 5000
