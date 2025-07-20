@@ -32,7 +32,7 @@ spec:
     spec:
       containers:
         - name: moxfielddecktoartists
-          image: ghcr.io/jacobbanghart/moxfielddecktoartists:v1.0.2
+          image: ghcr.io/jacobbanghart/moxfielddecktoartists:v1.0.3
           resources:
             requests:
               cpu: "100m"
