@@ -56,10 +56,10 @@ metadata:
   namespace: convertx
 spec:
   buffering:
-    maxRequestBodyBytes: 35000000
-    memRequestBodyBytes: 35000000
-    maxResponseBodyBytes: 35000000
-    memResponseBodyBytes: 35000000
+    maxRequestBodyBytes: 350000000
+    memRequestBodyBytes: 350000000
+    maxResponseBodyBytes: 350000000
+    memResponseBodyBytes: 350000000
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
