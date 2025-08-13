@@ -39,6 +39,7 @@ metadata:
   namespace: copyparty
 data:
   # https://github.com/9001/copyparty/blob/hovudstraum/docs/example.conf
+  # https://www.youtube.com/watch?v=15_-hgsX2V0
   copyparty.conf: |
     # not actually YAML but lets pretend:
     # -*- mode: yaml -*-
