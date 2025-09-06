@@ -1,0 +1,24 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+kind: Kustomization
+metadata:
+  name: nfs-csi
+  namespace: flux-system
+spec:
+  interval: 5m
+  path: "github.com/kubernetes-csi/csi-driver-nfs/deploy/kubernetes/overlays/stable"
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  validation: client
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-rwx
+provisioner: nfs.csi.k8s.io
+volumeBindingMode: Immediate
+reclaimPolicy: Retain
+parameters:
+  server: truenas.home
+  share: /mnt/BasicPool/kubernetes
