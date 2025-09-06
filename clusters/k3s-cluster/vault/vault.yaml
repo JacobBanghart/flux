@@ -66,6 +66,7 @@ spec:
     requests:
       storage: 20Gi
   volumeName: vault-data-pv-0
+  storageClassName: ""
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -79,6 +80,7 @@ spec:
     requests:
       storage: 20Gi
   volumeName: vault-data-pv-1
+  storageClassName: ""
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -92,6 +94,7 @@ spec:
     requests:
       storage: 20Gi
   volumeName: vault-data-pv-2
+  storageClassName: ""
 ---
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
