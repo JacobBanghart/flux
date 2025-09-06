@@ -10,7 +10,6 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  validation: client
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
