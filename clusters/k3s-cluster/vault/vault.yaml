@@ -3,26 +3,6 @@ kind: Namespace
 metadata:
   name: vault
 ---
-# WARNING: Using a shared RWMany volume for Raft storage across multiple Vault
-# pods is not a HashiCorp recommended production pattern (each Raft node should
-# have its own dedicated volume). This is provided to mirror the immich PV/PVC
-# example. For production HA Raft, prefer dynamic provisioning (RWO) so each
-# StatefulSet pod gets its own PVC. Adjust as needed.
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: vault-data-pv-0
-spec:
-  capacity:
-    storage: 20Gi
-  accessModes:
-    - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: ""
-  nfs:
-    server: truenas.home
-    path: /mnt/BasicPool/kubernetes/vault-data-0
----
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
@@ -61,6 +41,9 @@ spec:
         enabled: true
         size: 20Gi
         storageClass: nfs-rwx
+        labels:
+          app: vault
+          release: vault
       auditStorage:
         enabled: false
       service:
