@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dns-fixer
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dns-fixer
+  namespace: dns-fixer
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dns-fixer-patch-services
+rules:
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dns-fixer-patch-services
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: dns-fixer-patch-services
+subjects:
+  - kind: ServiceAccount
+    name: dns-fixer
+    namespace: dns-fixer
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: update-ingress-externalip
+  namespace: dns-fixer
+spec:
+  schedule: "*/5 * * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: dns-fixer
+          containers:
+            - name: updater
+              image: bitnami/kubectl:1.30.3
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: SERVICE_NAMESPACE
+                  value: kube-system
+                - name: SERVICE_NAME
+                  value: traefik
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  set -o pipefail
+                  WAN_IP=$(curl -fsS --max-time 4 https://ifconfig.me || curl -fsS --max-time 4 https://api.ipify.org)
+                  if [ -z "$WAN_IP" ]; then
+                    echo "Failed to determine WAN IP"
+                    exit 1
+                  fi
+                  echo "WAN IP: $WAN_IP"
+                  CURRENT=$(kubectl -n "$SERVICE_NAMESPACE" get svc "$SERVICE_NAME" -o jsonpath='{.spec.externalIPs[0]}' || true)
+                  if [ "$CURRENT" = "$WAN_IP" ]; then
+                    echo "No change, externalIPs already $WAN_IP"
+                    exit 0
+                  fi
+                  echo "Patching service $SERVICE_NAMESPACE/$SERVICE_NAME externalIPs -> $WAN_IP"
+                  kubectl -n "$SERVICE_NAMESPACE" patch svc "$SERVICE_NAME" --type=merge -p '{"spec":{"externalIPs":["'"$WAN_IP"'"]}}'
+                  echo "Done"
