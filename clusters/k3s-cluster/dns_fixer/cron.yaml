@@ -49,7 +49,7 @@ spec:
           serviceAccountName: dns-fixer
           containers:
             - name: updater
-              image: bitnami/kubectl:1.30.3
+              image: alpine:3.20
               imagePullPolicy: IfNotPresent
               env:
                 - name: SERVICE_NAMESPACE
@@ -61,6 +61,7 @@ spec:
                 - -ec
                 - |
                   set -o pipefail
+                  apk add --no-cache curl kubectl >/dev/null
                   WAN_IP=$(curl -fsS --max-time 4 https://ifconfig.me || curl -fsS --max-time 4 https://api.ipify.org)
                   if [ -z "$WAN_IP" ]; then
                     echo "Failed to determine WAN IP"
