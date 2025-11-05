@@ -92,7 +92,7 @@ spec:
     spec:
       containers:
         - name: copyparty
-          image: copyparty/ac:1.19.1
+          image: copyparty/ac:1.19.20
           resources:
             requests:
               cpu: 100m
