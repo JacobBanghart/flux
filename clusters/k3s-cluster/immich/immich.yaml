@@ -57,11 +57,8 @@ spec:
         name: immich
       interval: 5m
   values:
-    controllers:
-      containers:
-        main:
-          image:
-            tag: v2.2.3
+    image:
+      tag: v2.2.3
     immich:
       persistence:
         library:
