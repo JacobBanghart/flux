@@ -90,7 +90,7 @@ spec:
   storageClassName: ""
   volumeName: ivmariapv
 ---
-apiVersion: source.toolkit.fluxcd.io/v1beta1
+apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
   name: invoice-ninja-hc
@@ -99,7 +99,7 @@ spec:
   interval: 5m
   url: https://invoiceninja.github.io/dockerfiles
 ---
-apiVersion: helm.toolkit.fluxcd.io/v2beta1
+apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: invoice-ninja-hc
