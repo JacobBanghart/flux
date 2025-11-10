@@ -95,6 +95,21 @@ spec:
                   name: immich-postgres-secret
             env:
               DB_HOSTNAME: immich-postgres
+              DB_USERNAME:
+                valueFrom:
+                  secretKeyRef:
+                    name: immich-postgres-secret
+                    key: POSTGRES_USER
+              DB_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: immich-postgres-secret
+                    key: POSTGRES_PASSWORD
+              DB_DATABASE:
+                valueFrom:
+                  secretKeyRef:
+                    name: immich-postgres-secret
+                    key: POSTGRES_DB
     immich:
       persistence:
         library:
@@ -125,6 +140,8 @@ spec:
           secretKeys:
             adminPasswordKey: POSTGRES_PASSWORD
             userPasswordKey: POSTGRES_PASSWORD
+          username: immich
+          database: immich
         usePasswordFiles: false
     primary:
       persistence:
