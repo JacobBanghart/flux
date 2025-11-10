@@ -103,7 +103,8 @@ spec:
     valkey:
       enabled: true
       persistence:
-        storageClass: nfs-rwx
+        data:
+          storageClass: nfs-rwx
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
