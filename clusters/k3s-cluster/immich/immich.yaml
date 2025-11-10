@@ -146,6 +146,7 @@ spec:
     primary:
       persistence:
         existingClaim: immich-postgres-pvc
+      podSecurityContext: null
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
