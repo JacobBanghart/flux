@@ -78,7 +78,7 @@ spec:
   chart:
     spec:
       chart: immich
-      version: 0.10.1
+      version: 0.10.3
       sourceRef:
         kind: HelmRepository
         name: immich
@@ -89,12 +89,12 @@ spec:
         containers:
           main:
             image:
-              tag: v2.0.0
-            envFrom:
-              - secretRef:
-                  name: immich-postgres-secret
+              tag: v2.2.3
             env:
-              DB_HOSTNAME: immich-postgres
+              # PostgreSQL service name
+              DB_HOSTNAME: postgresql
+              DB_PORT: "5432"
+              # Using existing secret: immich-postgres-secret
               DB_USERNAME:
                 valueFrom:
                   secretKeyRef:
@@ -105,7 +105,7 @@ spec:
                   secretKeyRef:
                     name: immich-postgres-secret
                     key: POSTGRES_PASSWORD
-              DB_DATABASE:
+              DB_DATABASE_NAME:
                 valueFrom:
                   secretKeyRef:
                     name: immich-postgres-secret
@@ -114,47 +114,14 @@ spec:
       persistence:
         library:
           existingClaim: immichpvc
-      configuration: {}
+      configuration:
+        trash:
+          enabled: true
+          days: 30
+    # postgresql and redis subcharts removed in 0.10.0+
+    # Using external PostgreSQL and valkey (Redis replacement)
     valkey:
-      enabled: true
-      persistence:
-        data:
-          storageClass: nfs-rwx
----
-apiVersion: helm.toolkit.fluxcd.io/v2
-kind: HelmRelease
-metadata:
-  name: immich-postgres
-  namespace: immich
-spec:
-  interval: 5m
-  chartRef:
-    kind: OCIRepository
-    name: bitnami-postgres
-  values:
-    global:
-      postgresql:
-        fullnameOverride: immich-postgres
-        auth:
-          existingSecret: immich-postgres-secret
-          secretKeys:
-            adminPasswordKey: POSTGRES_PASSWORD
-            userPasswordKey: POSTGRES_PASSWORD
-          username: immich
-          database: immich
-        usePasswordFiles: false
-    primary:
-      persistence:
-        existingClaim: immich-postgres-pvc
-      podSecurityContext:
-        fsGroup: 999
-      resources:
-        requests:
-          memory: 1Gi
-          cpu: 250m
-        limits:
-          memory: 2Gi
-          cpu: 500m
+      enabled: true  # Enable valkey (Redis replacement) for Immich
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
