@@ -1,0 +1,6 @@
+1. Setup self hosted password manager 
+1. Finish out my hl15 and order that hoe so I have places to save my media and my new cpu off ebay
+1. Thermal printer software self hosted
+1. make sure that unifi has a way to sync with my k8s cluster so maybe a k8s controller for dns records for local
+1. Setup the RR stack
+1. Get an AV1 capable gpu to transcode with the RR stack for massive library
