@@ -1,0 +1,112 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vaultwarden
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vaultwarden-data-pvc
+  namespace: vaultwarden
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: nfs-rwx
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vaultwarden
+  namespace: vaultwarden
+  labels:
+    app: vaultwarden
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http
+  selector:
+    app: vaultwarden
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vaultwarden
+  namespace: vaultwarden
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vaultwarden
+  template:
+    metadata:
+      labels:
+        app: vaultwarden
+    spec:
+      containers:
+        - name: vaultwarden
+          image: vaultwarden/server:1.32.5-alpine
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            - name: DOMAIN
+              value: "https://passwords.jacobbanghart.com"
+            - name: SIGNUPS_ALLOWED
+              value: "true"
+            - name: WEBSOCKET_ENABLED
+              value: "true"
+            - name: SHOW_PASSWORD_HINT
+              value: "false"
+            - name: ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: vaultwarden-admin-secret
+                  key: ADMIN_TOKEN
+          volumeMounts:
+            - name: vaultwarden-data
+              mountPath: /data
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /alive
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /alive
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: vaultwarden-data
+          persistentVolumeClaim:
+            claimName: vaultwarden-data-pvc
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vaultwarden-ingress
+  namespace: vaultwarden
+spec:
+  rules:
+    - host: passwords.jacobbanghart.com
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: vaultwarden
+                port:
+                  number: 80
