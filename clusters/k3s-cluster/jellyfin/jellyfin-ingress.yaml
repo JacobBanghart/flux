@@ -106,7 +106,7 @@ spec:
     spec:
       containers:
         - name: jellyfin
-          image: lscr.io/linuxserver/jellyfin:10.10.7
+          image: jellyfin/jellyfin:10.11.3
           resources:
             requests:
               cpu: "100m"
