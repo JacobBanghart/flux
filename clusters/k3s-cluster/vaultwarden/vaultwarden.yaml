@@ -110,3 +110,23 @@ spec:
                 name: vaultwarden
                 port:
                   number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vaultwarden-local
+  namespace: vaultwarden
+  labels:
+    name: vaultwarden-local
+spec:
+  rules:
+    - host: passwords.local
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: vaultwarden
+                port:
+                  number: 80
