@@ -104,10 +104,23 @@ spec:
       labels:
         app: files
     spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
       containers:
         - name: files
           image: filebrowser/filebrowser:s6
           imagePullPolicy: Always
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+          env:
+            - name: FB_DATABASE
+              value: /database/filebrowser.db
+            - name: FB_CONFIG
+              value: /config/settings.json
+            - name: FB_ROOT
+              value: /srv
           resources:
             requests:
               cpu: "100m"
