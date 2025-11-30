@@ -107,6 +107,7 @@ spec:
       containers:
         - name: files
           image: filebrowser/filebrowser:s6
+          imagePullPolicy: Always
           resources:
             requests:
               cpu: "100m"
