@@ -90,14 +90,6 @@ spec:
       - "--certificatesresolvers.cloudflare.acme.storage=/ssl-certs/acme-cloudflare.json"
 
     deployment:
-      labels:
-        release: prometheus
-      podLabels:
-        release: prometheus
-      podAnnotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "9100"
-        prometheus.io/path: /metrics
       initContainers:
         - name: volume-permissions
           image: busybox:1.31.1
@@ -108,9 +100,3 @@ spec:
           volumeMounts:
             - name: ssl-certs
               mountPath: /ssl-certs
-
-    metrics:
-      prometheus:
-        addEntryPointsLabels: true
-        addRoutersLabels: true
-        addServicesLabels: true
