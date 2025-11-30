@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: excalidraw
-          image: excalidraw/excalidraw:latest
+          image: excalidraw/excalidraw:sha-4bfc5bb
           resources:
             requests:
               cpu: "100m"

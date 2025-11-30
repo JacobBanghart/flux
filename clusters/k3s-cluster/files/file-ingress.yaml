@@ -109,8 +109,8 @@ spec:
         runAsGroup: 1000
       containers:
         - name: files
-          image: filebrowser/filebrowser:latest
-          imagePullPolicy: Always
+          image: filebrowser/filebrowser:v2.31.2
+          imagePullPolicy: IfNotPresent
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
