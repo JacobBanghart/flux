@@ -109,18 +109,15 @@ spec:
         runAsGroup: 1000
       containers:
         - name: files
-          image: filebrowser/filebrowser:s6
+          image: filebrowser/filebrowser:latest
           imagePullPolicy: Always
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
-          env:
-            - name: FB_DATABASE
-              value: /database/filebrowser.db
-            - name: FB_CONFIG
-              value: /config/settings.json
-            - name: FB_ROOT
-              value: /srv
+          args:
+            - --database=/database/filebrowser.db
+            - --config=/config/settings.json
+            - --root=/srv
           resources:
             requests:
               cpu: "100m"
