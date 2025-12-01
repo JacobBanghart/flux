@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cattle-system
+---
+# Rancher Helm Repository
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: rancher-stable
+  namespace: cattle-system
+spec:
+  interval: 1h
+  url: https://releases.rancher.com/server-charts/stable
+---
+# Rancher
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: rancher
+  namespace: cattle-system
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: rancher
+      version: "2.10.1"
+      sourceRef:
+        kind: HelmRepository
+        name: rancher-stable
+      interval: 10m
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    # CHANGE THIS to your domain
+    hostname: rancher.jacobbanghart.com
+
+    # Let Traefik handle TLS (no cert-manager needed)
+    ingress:
+      tls:
+        source: external
+      extraAnnotations:
+        traefik.ingress.kubernetes.io/router.entrypoints: websecure
+        traefik.ingress.kubernetes.io/router.tls: "true"
+
+    # Replicas (set to 3 for HA when you have multiple nodes)
+    replicas: 1
+
+    # Bootstrap password from secret
+    # Password stored in secret: bootstrap-secret
+    bootstrapPassword: ""
+
+  valuesFrom:
+    - kind: Secret
+      name: bootstrap-secret
+      valuesKey: bootstrapPassword
+      targetPath: bootstrapPassword
