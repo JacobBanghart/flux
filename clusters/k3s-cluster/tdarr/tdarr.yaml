@@ -116,6 +116,8 @@ kind: Ingress
 metadata:
   name: tdarr
   namespace: tdarr
+  annotations:
+    traefik.ingress.kubernetes.io/service.sticky.cookie: "true"
 spec:
   rules:
     - host: tdarr.jacobbanghart.com
@@ -135,6 +137,8 @@ kind: Ingress
 metadata:
   name: tdarr-local
   namespace: tdarr
+  annotations:
+    traefik.ingress.kubernetes.io/service.sticky.cookie: "true"
 spec:
   rules:
     - host: tdarr.local
