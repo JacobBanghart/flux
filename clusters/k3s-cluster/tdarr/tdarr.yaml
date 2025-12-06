@@ -204,7 +204,6 @@ spec:
             limits:
               cpu: "4"
               memory: "4Gi"
-              amd.com/gpu: 1
           volumeMounts:
             - mountPath: /app/server
               name: config
