@@ -189,6 +189,8 @@ spec:
               value: "6"
             - name: nodeName
               value: "tdarr-gpu"
+            - name: webUIBindAddress
+              value: "0.0.0.0"
           resources:
             requests:
               cpu: "500m"
