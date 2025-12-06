@@ -97,6 +97,9 @@ spec:
       containers:
         - name: copyparty
           image: copyparty/ac:1.19.20
+          env:
+            - name: PRTY_UNSAFE_STATE
+              value: "1"
           resources:
             requests:
               cpu: 100m
