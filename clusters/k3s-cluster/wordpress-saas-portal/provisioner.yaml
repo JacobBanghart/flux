@@ -106,7 +106,11 @@ rules:
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   # Ingress
   - apiGroups: ["networking.k8s.io"]
-    resources: ["ingresses"]
+    resources: ["ingresses", "networkpolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # ResourceQuotas
+  - apiGroups: [""]
+    resources: ["resourcequotas"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   # RBAC for per-client namespaces
   - apiGroups: ["rbac.authorization.k8s.io"]
