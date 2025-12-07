@@ -41,6 +41,12 @@ spec:
               value: "0.0.0.0"
             - name: HSA_OVERRIDE_GFX_VERSION
               value: "11.0.1"
+            - name: OLLAMA_FLASH_ATTENTION
+              value: "1"
+            - name: OLLAMA_NUM_PARALLEL
+              value: "1"
+            - name: OLLAMA_GPU_LAYERS
+              value: "999"
           securityContext:
             privileged: true
           volumeMounts:
