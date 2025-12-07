@@ -41,7 +41,7 @@ spec:
                   name: portal-secrets
                   key: database-url
             - name: HELM_CHART_PATH
-              value: "/charts/WordpressHelm"
+              value: "/charts/WordpressHelm.git"
             - name: CLIENT_DOMAIN_SUFFIX
               value: "clients.jacobbanghart.com"
           volumeMounts:
