@@ -73,6 +73,7 @@ metadata:
   namespace: openwebui
   annotations:
     kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/buffering: "false"
 spec:
   rules:
   - host: openwebui.jacobbanghart.com
