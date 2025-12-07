@@ -98,7 +98,7 @@ rules:
     verbs: ["get", "list", "watch"]
   # Deployments
   - apiGroups: ["apps"]
-    resources: ["deployments", "statefulsets"]
+    resources: ["deployments", "statefulsets", "replicasets"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   # Jobs (for init jobs)
   - apiGroups: ["batch"]
