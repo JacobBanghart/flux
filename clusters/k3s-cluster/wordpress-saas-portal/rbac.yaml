@@ -1,0 +1,31 @@
+# ServiceAccount for portal (minimal permissions)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: portal
+  namespace: wordpress-saas-portal
+---
+# Portal only needs to read its own config, no cluster permissions needed
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: portal
+  namespace: wordpress-saas-portal
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: portal
+  namespace: wordpress-saas-portal
+subjects:
+  - kind: ServiceAccount
+    name: portal
+    namespace: wordpress-saas-portal
+roleRef:
+  kind: Role
+  name: portal
+  apiGroup: rbac.authorization.k8s.io
