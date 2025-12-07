@@ -3,6 +3,19 @@ kind: Namespace
 metadata:
   name: ollama
 ---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-data-pvc
+  namespace: ollama
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: nfs-rwx
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -33,10 +46,15 @@ spec:
           volumeMounts:
             - mountPath: /dev/dri
               name: dri
+            - mountPath: /root/.ollama
+              name: data
       volumes:
         - name: dri
           hostPath:
             path: /dev/dri
+        - name: data
+          persistentVolumeClaim:
+            claimName: ollama-data-pvc
 ---
 apiVersion: v1
 kind: Service
@@ -50,19 +68,26 @@ spec:
     - port: 11434
       targetPort: 11434
 ---
-apiVersion: traefik.io/v1alpha1
-kind: IngressRoute
+apiVersion: networking.k8s.io/v1
+kind: Ingress
 metadata:
   name: ollama
   namespace: ollama
+  annotations:
+    kubernetes.io/ingress.class: traefik
 spec:
-  entryPoints:
-    - websecure
-  routes:
-    - match: Host(`ollama.jacobbanghart.com`)
-      kind: Rule
-      services:
-        - name: ollama
-          port: 11434
+  rules:
+  - host: ollama.jacobbanghart.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ollama
+            port:
+              number: 11434
   tls:
-    certResolver: cloudflare
+  - hosts:
+    - ollama.jacobbanghart.com
+    secretName: ollama-tls
