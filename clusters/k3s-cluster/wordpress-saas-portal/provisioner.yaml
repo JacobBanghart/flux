@@ -1,0 +1,131 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: provisioner
+  namespace: wordpress-saas-portal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: provisioner
+  strategy:
+    type: Recreate  # Only one provisioner at a time
+  template:
+    metadata:
+      labels:
+        app: provisioner
+    spec:
+      serviceAccountName: provisioner
+      initContainers:
+        # Git-sync to clone the Helm chart repo
+        - name: git-sync
+          image: registry.k8s.io/git-sync/git-sync:v4.2.1
+          args:
+            - --repo=https://gitlab.com/jacobmbanghart/wordpress-client-chart.git
+            - --root=/charts
+            - --one-time
+          volumeMounts:
+            - name: helm-charts
+              mountPath: /charts
+          securityContext:
+            runAsUser: 65534
+            runAsGroup: 65534
+      containers:
+        - name: provisioner
+          image: registry.gitlab.com/jacobmbanghart/wordpress-saas-portal/provisioner:latest
+          imagePullPolicy: Always
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: portal-secrets
+                  key: database-url
+            - name: HELM_CHART_PATH
+              value: "/charts/wordpress-client-chart"
+            - name: CLIENT_DOMAIN_SUFFIX
+              value: "clients.jacobbanghart.com"
+          volumeMounts:
+            - name: helm-charts
+              mountPath: /charts
+              readOnly: true
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "1000m"
+      volumes:
+        - name: helm-charts
+          emptyDir: {}
+---
+# ServiceAccount for provisioner with Helm/K8s permissions
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: provisioner
+  namespace: wordpress-saas-portal
+---
+# ClusterRole for provisioner to manage namespaces and Helm releases
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: wordpress-saas-provisioner
+rules:
+  # Namespace management
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  # Secrets for Helm
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # ConfigMaps
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Services
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # PVCs
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Pods (for status checks)
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  # Deployments
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Jobs (for init jobs)
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Ingress
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # RBAC for per-client namespaces
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "rolebindings"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # ServiceAccounts
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: wordpress-saas-provisioner
+subjects:
+  - kind: ServiceAccount
+    name: provisioner
+    namespace: wordpress-saas-portal
+roleRef:
+  kind: ClusterRole
+  name: wordpress-saas-provisioner
+  apiGroup: rbac.authorization.k8s.io

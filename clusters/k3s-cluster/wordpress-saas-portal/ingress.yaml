@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: portal
+  namespace: wordpress-saas-portal
+  labels:
+    app: portal
+  annotations:
+    # TLS via cert-manager if you have it
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  rules:
+    - host: portal.jacobbanghart.com
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: portal
+                port:
+                  number: 8080
+  # Uncomment if using TLS
+  # tls:
+  #   - hosts:
+  #       - portal.jacobbanghart.com
+  #     secretName: portal-tls
