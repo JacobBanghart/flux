@@ -33,25 +33,30 @@ spec:
     spec:
       containers:
         - name: ollama
-          image: ollama/ollama:latest
+          image: ollama/ollama:rocm
           ports:
             - containerPort: 11434
           env:
             - name: OLLAMA_HOST
               value: "0.0.0.0"
-            - name: OLLAMA_MODELS
-              value: "llama2:latest"
+            - name: HSA_OVERRIDE_GFX_VERSION
+              value: "11.0.0"
           securityContext:
             privileged: true
           volumeMounts:
             - mountPath: /dev/dri
               name: dri
+            - mountPath: /dev/kfd
+              name: kfd
             - mountPath: /root/.ollama
               name: data
       volumes:
         - name: dri
           hostPath:
             path: /dev/dri
+        - name: kfd
+          hostPath:
+            path: /dev/kfd
         - name: data
           persistentVolumeClaim:
             claimName: ollama-data-pvc
