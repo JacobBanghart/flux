@@ -29,10 +29,20 @@ spec:
         app: portal
     spec:
       serviceAccountName: portal
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
         - name: portal
           image: registry.gitlab.com/jacobmbanghart/wordpress-saas-portal/portal:latest
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           ports:
             - containerPort: 8080
               name: http
