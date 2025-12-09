@@ -17,9 +17,19 @@ spec:
       labels:
         app: excalidraw
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
       containers:
         - name: excalidraw
           image: excalidraw/excalidraw:sha-4bfc5bb
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           resources:
             requests:
               cpu: "100m"

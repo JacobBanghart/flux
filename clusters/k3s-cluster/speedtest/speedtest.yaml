@@ -30,9 +30,19 @@ spec:
       labels:
         app: speedtest
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
         - name: speedtest
           image: openspeedtest/latest:v2.0.4
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           resources:
             requests:
               memory: "100Mi"

@@ -46,9 +46,19 @@ spec:
       labels:
         app: mealie
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
         - name: mealie
           image: ghcr.io/mealie-recipes/mealie:v3.5.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           resources:
             requests:
               memory: "128Mi"

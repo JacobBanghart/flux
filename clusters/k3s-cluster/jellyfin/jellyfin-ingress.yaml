@@ -104,9 +104,16 @@ spec:
       labels:
         app: jellyfin
     spec:
+      securityContext:
+        fsGroup: 1000
       containers:
         - name: jellyfin
           image: jellyfin/jellyfin:10.11.3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           resources:
             requests:
               cpu: "100m"

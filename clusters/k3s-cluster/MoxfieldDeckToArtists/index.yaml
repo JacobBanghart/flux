@@ -30,9 +30,19 @@ spec:
       labels:
         app: moxfielddecktoartists
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
         - name: moxfielddecktoartists
           image: ghcr.io/jacobbanghart/moxfielddecktoartists:v1.0.3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           resources:
             requests:
               cpu: "100m"
