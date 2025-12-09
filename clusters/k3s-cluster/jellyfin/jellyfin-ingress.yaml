@@ -123,6 +123,18 @@ spec:
               cpu: "4"
           ports:
             - containerPort: 8096
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8096
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8096
+            initialDelaySeconds: 10
+            periodSeconds: 10
           volumeMounts:
             - mountPath: /config
               name: jellyfinconfigpvc

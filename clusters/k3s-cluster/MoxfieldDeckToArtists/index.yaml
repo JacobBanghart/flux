@@ -52,6 +52,18 @@ spec:
               cpu: "1000m"
           ports:
             - containerPort: 4000
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 4000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 4000
+            initialDelaySeconds: 5
+            periodSeconds: 10
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
