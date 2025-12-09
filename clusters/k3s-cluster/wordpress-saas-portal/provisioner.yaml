@@ -67,62 +67,70 @@ metadata:
   namespace: wordpress-saas-portal
 ---
 # ClusterRole for provisioner to manage namespaces and Helm releases
+#
+# SECURITY NOTES (2024-12-09):
+# - This role has cluster-wide permissions because it dynamically provisions
+#   client WordPress instances in NEW namespaces (can't use namespace-scoped Roles)
+# - The provisioner application should only operate on namespaces with label:
+#   app.kubernetes.io/managed-by=wordpress-saas
+#
+# PERMISSIONS REMOVED (tightened from original):
+# - LimitRanges, ResourceQuotas - not used by Helm chart
+# - NetworkPolicies - Flannel CNI doesn't enforce them
+# - Roles/RoleBindings - prevents privilege escalation attacks
+# - ServiceAccounts - WordPress pods use default SA
+# - Jobs - not used by Helm chart
+# - ReplicaSets write access - managed by Deployments (read-only now)
+#
+# TO ADD BACK IF NEEDED:
+# - Jobs: apiGroups: ["batch"], resources: ["jobs"], verbs: ["get","list","watch","create","update","patch","delete"]
+# - ServiceAccounts: apiGroups: [""], resources: ["serviceaccounts"], verbs: ["get","list","watch","create","delete"]
+#
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: wordpress-saas-provisioner
 rules:
-  # Namespace management
+  # Namespace management - required for multi-tenant provisioning
+  # Provisioner should only target namespaces with specific labels
   - apiGroups: [""]
     resources: ["namespaces"]
     verbs: ["get", "list", "watch", "create", "delete"]
-  # Secrets for Helm
+  # Secrets for Helm release metadata (stored in release namespace)
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  # ConfigMaps
+  # ConfigMaps for Helm and WordPress config
   - apiGroups: [""]
     resources: ["configmaps"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  # Services
+  # Services for WordPress pods
   - apiGroups: [""]
     resources: ["services"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  # PVCs
+  # PVCs for WordPress storage
   - apiGroups: [""]
     resources: ["persistentvolumeclaims"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  # LimitRanges
-  - apiGroups: [""]
-    resources: ["limitranges"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  # Pods (for status checks)
+  # Pods (read-only for status checks)
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get", "list", "watch"]
-  # Deployments
+  # Pod logs for debugging client issues
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get", "list"]
+  # Deployments/StatefulSets for WordPress
   - apiGroups: ["apps"]
-    resources: ["deployments", "statefulsets", "replicasets"]
+    resources: ["deployments", "statefulsets"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  # Jobs (for init jobs)
-  - apiGroups: ["batch"]
-    resources: ["jobs"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  # Ingress
+  # ReplicaSets (read-only, managed by Deployments)
+  - apiGroups: ["apps"]
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
+  # Ingress for client domains
   - apiGroups: ["networking.k8s.io"]
-    resources: ["ingresses", "networkpolicies"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  # ResourceQuotas
-  - apiGroups: [""]
-    resources: ["resourcequotas"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  # RBAC for per-client namespaces
-  - apiGroups: ["rbac.authorization.k8s.io"]
-    resources: ["roles", "rolebindings"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  # ServiceAccounts
-  - apiGroups: [""]
-    resources: ["serviceaccounts"]
+    resources: ["ingresses"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1

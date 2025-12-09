@@ -4,3 +4,12 @@
 1. make sure that unifi has a way to sync with my k8s cluster so maybe a k8s controller for dns records for local
 1. Setup the RR stack
 1. Get an AV1 capable gpu to transcode with the RR stack for massive library
+
+## Cluster Security - Future Work
+
+### NetworkPolicies (Blocked - Flannel doesn't support them)
+- Current CNI: Flannel (K3s default) - does NOT enforce NetworkPolicies
+- Options to enable:
+  1. Install Calico policy controller: `kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/calico-policy-only.yaml`
+  2. Reinstall K3s with Cilium: `--flannel-backend=none` then install Cilium
+- NetworkPolicy configs were prepared but not committed (ask Copilot to regenerate when ready)
