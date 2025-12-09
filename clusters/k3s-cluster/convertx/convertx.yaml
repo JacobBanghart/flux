@@ -38,7 +38,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: convertx
-          image: ghcr.io/c4illin/convertx:v0.15.1
+          image: ghcr.io/c4illin/convertx:v0.16.0
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -55,13 +55,13 @@ spec:
             - containerPort: 3000
           livenessProbe:
             httpGet:
-              path: /
+              path: /healthz
               port: 3000
             initialDelaySeconds: 15
             periodSeconds: 20
           readinessProbe:
             httpGet:
-              path: /
+              path: /healthz
               port: 3000
             initialDelaySeconds: 5
             periodSeconds: 10
