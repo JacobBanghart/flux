@@ -9,6 +9,7 @@ metadata:
   name: excalidraw
   namespace: excalidraw
 spec:
+  replicas: 2
   selector:
     matchLabels:
       app: excalidraw
