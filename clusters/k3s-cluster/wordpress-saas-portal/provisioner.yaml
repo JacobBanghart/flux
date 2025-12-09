@@ -86,8 +86,9 @@ metadata:
 # SECURITY NOTES (2024-12-09):
 # - This role has cluster-wide permissions because it dynamically provisions
 #   client WordPress instances in NEW namespaces (can't use namespace-scoped Roles)
-# - The provisioner application should only operate on namespaces with label:
+# - The provisioner application MUST only operate on namespaces with label:
 #   app.kubernetes.io/managed-by=wordpress-saas
+# - Delete permissions scoped to only what Helm teardown requires
 #
 # PERMISSIONS REMOVED (tightened from original):
 # - LimitRanges, ResourceQuotas - not used by Helm chart
@@ -96,10 +97,7 @@ metadata:
 # - ServiceAccounts - WordPress pods use default SA
 # - Jobs - not used by Helm chart
 # - ReplicaSets write access - managed by Deployments (read-only now)
-#
-# TO ADD BACK IF NEEDED:
-# - Jobs: apiGroups: ["batch"], resources: ["jobs"], verbs: ["get","list","watch","create","update","patch","delete"]
-# - ServiceAccounts: apiGroups: [""], resources: ["serviceaccounts"], verbs: ["get","list","watch","create","delete"]
+# - Cluster-wide delete on secrets/configmaps - now read/create/update only
 #
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -107,26 +105,26 @@ metadata:
   name: wordpress-saas-provisioner
 rules:
   # Namespace management - required for multi-tenant provisioning
-  # Provisioner should only target namespaces with specific labels
+  # Delete allowed: cascades to delete all resources in namespace
   - apiGroups: [""]
     resources: ["namespaces"]
     verbs: ["get", "list", "watch", "create", "delete"]
-  # Secrets for Helm release metadata (stored in release namespace)
+  # Secrets for Helm release metadata - no delete (namespace delete cascades)
   - apiGroups: [""]
     resources: ["secrets"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  # ConfigMaps for Helm and WordPress config
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  # ConfigMaps for Helm and WordPress config - no delete (namespace delete cascades)
   - apiGroups: [""]
     resources: ["configmaps"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  # Services for WordPress pods
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  # Services for WordPress pods - no delete (namespace delete cascades)
   - apiGroups: [""]
     resources: ["services"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  # PVCs for WordPress storage
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  # PVCs for WordPress storage - no delete (namespace delete cascades)
   - apiGroups: [""]
     resources: ["persistentvolumeclaims"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
   # Pods (read-only for status checks)
   - apiGroups: [""]
     resources: ["pods"]
@@ -135,18 +133,18 @@ rules:
   - apiGroups: [""]
     resources: ["pods/log"]
     verbs: ["get", "list"]
-  # Deployments/StatefulSets for WordPress
+  # Deployments/StatefulSets - no delete (namespace delete cascades)
   - apiGroups: ["apps"]
     resources: ["deployments", "statefulsets"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
   # ReplicaSets (read-only, managed by Deployments)
   - apiGroups: ["apps"]
     resources: ["replicasets"]
     verbs: ["get", "list", "watch"]
-  # Ingress for client domains
+  # Ingress for client domains - no delete (namespace delete cascades)
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
