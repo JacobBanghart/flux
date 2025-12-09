@@ -55,6 +55,21 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "1000m"
+          # Provisioner is a long-running worker, use exec probe
+          livenessProbe:
+            exec:
+              command:
+                - cat
+                - /tmp/healthy
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            exec:
+              command:
+                - cat
+                - /tmp/healthy
+            initialDelaySeconds: 10
+            periodSeconds: 10
       volumes:
         - name: helm-charts
           emptyDir: {}

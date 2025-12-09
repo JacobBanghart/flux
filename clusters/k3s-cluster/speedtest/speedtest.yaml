@@ -52,6 +52,18 @@ spec:
               cpu: "1000m"
           ports:
             - containerPort: 3000
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
 ---
 apiVersion: traefik.io/v1alpha1
 kind: Middleware

@@ -74,6 +74,18 @@ spec:
           env:
             - name: BASE_URL
               value: https://mealie.jacobbanghart.com/
+          livenessProbe:
+            httpGet:
+              path: /api/app/about
+              port: 9000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/app/about
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 10
       volumes:
         - name: mealiepvc
           persistentVolumeClaim:
