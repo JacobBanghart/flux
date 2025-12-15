@@ -36,7 +36,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: portal
-          image: registry.gitlab.com/jacobmbanghart/wordpress-saas-portal/portal:20251215022727-0508eb59 # {"$imagepolicy": "flux-system:wordpress-saas-portal"}
+          image: registry.gitlab.com/jacobmbanghart/wordpress-saas-portal/portal:20251215025720-d95de3e3 # {"$imagepolicy": "flux-system:wordpress-saas-portal"}
           imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false
