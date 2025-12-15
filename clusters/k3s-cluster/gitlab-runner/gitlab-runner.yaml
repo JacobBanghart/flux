@@ -74,9 +74,16 @@ data:
               "gitlab-runner" = "true"
             [runners.kubernetes.node_selector]
               "kubernetes.io/os" = "linux"
+            # Build pod resources - requests are guaranteed, limits are burst
+            [runners.kubernetes.build_container_requests]
+              cpu = "500m"
+              memory = "1Gi"
             [runners.kubernetes.build_container_limits]
               cpu = "2"
               memory = "4Gi"
+            [runners.kubernetes.helper_container_requests]
+              cpu = "100m"
+              memory = "128Mi"
             [runners.kubernetes.helper_container_limits]
               cpu = "500m"
               memory = "512Mi"
