@@ -7,6 +7,7 @@ resources:
   - rbac.yaml
   - portal.yaml
   - provisioner.yaml
+  - reconciler-cronjob.yaml
   - ingress.yaml
   - cloudflared.yaml
   # Note: Secrets are NOT included in this kustomization.
