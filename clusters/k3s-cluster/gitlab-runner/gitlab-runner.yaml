@@ -37,14 +37,14 @@ data:
   values.yaml: |
     gitlabUrl: https://gitlab.com
     
-    # Run 2 runner replicas for more parallelism
-    replicas: 2
+    # Run 1 runner replica
+    replicas: 1
     
     # Reduce log verbosity
     logLevel: warn
     
-    # Each runner can handle 10 concurrent jobs
-    concurrent: 10
+    # Only 2 concurrent jobs - more resources per job for faster Go builds
+    concurrent: 2
     
     runners:
       secret: gitlab-runner-secret
@@ -74,13 +74,14 @@ data:
               "gitlab-runner" = "true"
             [runners.kubernetes.node_selector]
               "kubernetes.io/os" = "linux"
-            # Build pod resources - requests are guaranteed, limits are burst
+            # Build pod resources - 2 jobs x 2 CPU = 4 CPU reserved
+            # Go builds benefit from more CPU (parallel compilation)
             [runners.kubernetes.build_container_requests]
-              cpu = "500m"
-              memory = "1Gi"
-            [runners.kubernetes.build_container_limits]
               cpu = "2"
-              memory = "4Gi"
+              memory = "2Gi"
+            [runners.kubernetes.build_container_limits]
+              cpu = "4"
+              memory = "6Gi"
             [runners.kubernetes.helper_container_requests]
               cpu = "100m"
               memory = "128Mi"
