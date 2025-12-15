@@ -1,0 +1,107 @@
+---
+# Image Repository for portal
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: wordpress-saas-portal
+  namespace: flux-system
+spec:
+  image: registry.gitlab.com/jacobmbanghart/wordpress-saas-portal/portal
+  interval: 1m
+  secretRef:
+    name: regcred
+---
+# Image Repository for provisioner
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: wordpress-saas-provisioner
+  namespace: flux-system
+spec:
+  image: registry.gitlab.com/jacobmbanghart/wordpress-saas-portal/provisioner
+  interval: 1m
+  secretRef:
+    name: regcred
+---
+# Image Repository for reconciler
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: wordpress-saas-reconciler
+  namespace: flux-system
+spec:
+  image: registry.gitlab.com/jacobmbanghart/wordpress-saas-portal/reconciler
+  interval: 1m
+  secretRef:
+    name: regcred
+---
+# Image Policy for portal - use latest commit SHA
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: wordpress-saas-portal
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: wordpress-saas-portal
+  filterTags:
+    pattern: '^[a-f0-9]{40}$'
+  policy:
+    alphabetical:
+      order: desc
+---
+# Image Policy for provisioner
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: wordpress-saas-provisioner
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: wordpress-saas-provisioner
+  filterTags:
+    pattern: '^[a-f0-9]{40}$'
+  policy:
+    alphabetical:
+      order: desc
+---
+# Image Policy for reconciler
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: wordpress-saas-reconciler
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: wordpress-saas-reconciler
+  filterTags:
+    pattern: '^[a-f0-9]{40}$'
+  policy:
+    alphabetical:
+      order: desc
+---
+# Image Update Automation - automatically update manifests
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageUpdateAutomation
+metadata:
+  name: wordpress-saas-portal
+  namespace: flux-system
+spec:
+  interval: 1m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  git:
+    checkout:
+      ref:
+        branch: main
+    commit:
+      author:
+        email: fluxcdbot@users.noreply.github.com
+        name: fluxcdbot
+      messageTemplate: 'chore: update wordpress-saas-portal images {{range .Changed.Changes}}{{print .OldValue}} -> {{println .NewValue}}{{end}}'
+    push:
+      branch: main
+  update:
+    path: ./clusters/k3s-cluster/wordpress-saas-portal
+    strategy: Setters
