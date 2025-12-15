@@ -32,7 +32,7 @@ spec:
             runAsGroup: 65534
       containers:
         - name: provisioner
-          image: registry.gitlab.com/jacobmbanghart/wordpress-saas-portal/provisioner:20251215032734-c20f9ee4 # {"$imagepolicy": "flux-system:wordpress-saas-provisioner"}
+          image: registry.gitlab.com/jacobmbanghart/wordpress-saas-portal/provisioner:20251215035727-da58e4bb # {"$imagepolicy": "flux-system:wordpress-saas-provisioner"}
           imagePullPolicy: Always
           env:
             - name: DATABASE_URL
