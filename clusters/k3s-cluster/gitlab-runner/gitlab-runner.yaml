@@ -18,7 +18,7 @@ spec:
   chart:
     spec:
       chart: gitlab-runner
-      version: "0.71.0"  # Latest stable
+      version: "0.71.0"
       sourceRef:
         kind: HelmRepository
         name: gitlab
@@ -37,6 +37,15 @@ data:
   values.yaml: |
     gitlabUrl: https://gitlab.com
     
+    # Run 2 runner replicas for more parallelism
+    replicas: 2
+    
+    # Reduce log verbosity
+    logLevel: warn
+    
+    # Each runner can handle 10 concurrent jobs
+    concurrent: 10
+    
     runners:
       secret: gitlab-runner-secret
       
@@ -45,10 +54,15 @@ data:
           name = "k3s-cluster-runner"
           url = "https://gitlab.com"
           executor = "kubernetes"
+          # Log level for the runner
+          log_level = "warn"
           [runners.kubernetes]
             namespace = "gitlab-runner"
             image = "alpine:latest"
             privileged = false
+            # Poll interval - less chatty logs
+            poll_interval = 3
+            poll_timeout = 180
             [[runners.kubernetes.volumes.empty_dir]]
               name = "docker-certs"
               mount_path = "/certs/client"
