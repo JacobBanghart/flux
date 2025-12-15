@@ -11,7 +11,7 @@ spec:
     branch: main
   secretRef:
     name: flux-system
-  url: ssh://git@gitlab.com/jacobmbanghart/flux
+  url: https://gitlab.com/jacobmbanghart/flux.git
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
