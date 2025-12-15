@@ -1,0 +1,62 @@
+# GitLab Runner Helm values
+# Uses Kubernetes executor to run CI jobs as pods
+
+gitlabUrl: https://gitlab.com
+
+# Use existing secret for runner token
+runners:
+  secret: gitlab-runner-secret
+  
+  config: |
+    [[runners]]
+      name = "k3s-cluster-runner"
+      url = "https://gitlab.com"
+      executor = "kubernetes"
+      [runners.kubernetes]
+        namespace = "gitlab-runner"
+        image = "alpine:latest"
+        privileged = false
+        # For building Docker images with Kaniko
+        [[runners.kubernetes.volumes.empty_dir]]
+          name = "docker-certs"
+          mount_path = "/certs/client"
+          medium = "Memory"
+        # Cache for faster builds
+        [[runners.kubernetes.volumes.empty_dir]]
+          name = "cache"
+          mount_path = "/cache"
+        [runners.kubernetes.pod_labels]
+          "gitlab-runner" = "true"
+        [runners.kubernetes.node_selector]
+          "kubernetes.io/os" = "linux"
+        # Resource limits for build pods
+        [runners.kubernetes.build_container_limits]
+          cpu = "2"
+          memory = "4Gi"
+        [runners.kubernetes.build_container_limits_overwrite_allowed]
+          cpu = "4"
+          memory = "8Gi"
+        [runners.kubernetes.helper_container_limits]
+          cpu = "500m"
+          memory = "512Mi"
+      [runners.cache]
+        Type = "local"
+        Path = "/cache"
+
+# Runner pod resources
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Enable RBAC
+rbac:
+  create: true
+
+# Service account
+serviceAccount:
+  create: true
+  name: gitlab-runner
