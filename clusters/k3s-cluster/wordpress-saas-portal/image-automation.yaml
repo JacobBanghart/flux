@@ -35,7 +35,7 @@ spec:
   secretRef:
     name: regcred
 ---
-# Image Policy for portal - use latest commit SHA
+# Image Policy for portal - use timestamp-based tag for proper sorting
 apiVersion: image.toolkit.fluxcd.io/v1beta2
 kind: ImagePolicy
 metadata:
@@ -45,10 +45,12 @@ spec:
   imageRepositoryRef:
     name: wordpress-saas-portal
   filterTags:
-    pattern: '^[a-f0-9]{40}$'
+    # Match: 20251215023000-abc1234 (timestamp-shortsha)
+    pattern: '^(?P<ts>\d{14})-[a-f0-9]+$'
+    extract: '$ts'
   policy:
-    alphabetical:
-      order: desc
+    numerical:
+      order: asc
 ---
 # Image Policy for provisioner
 apiVersion: image.toolkit.fluxcd.io/v1beta2
@@ -60,10 +62,11 @@ spec:
   imageRepositoryRef:
     name: wordpress-saas-provisioner
   filterTags:
-    pattern: '^[a-f0-9]{40}$'
+    pattern: '^(?P<ts>\d{14})-[a-f0-9]+$'
+    extract: '$ts'
   policy:
-    alphabetical:
-      order: desc
+    numerical:
+      order: asc
 ---
 # Image Policy for reconciler
 apiVersion: image.toolkit.fluxcd.io/v1beta2
@@ -75,10 +78,11 @@ spec:
   imageRepositoryRef:
     name: wordpress-saas-reconciler
   filterTags:
-    pattern: '^[a-f0-9]{40}$'
+    pattern: '^(?P<ts>\d{14})-[a-f0-9]+$'
+    extract: '$ts'
   policy:
-    alphabetical:
-      order: desc
+    numerical:
+      order: asc
 ---
 # GitRepository with SSH access for pushing image updates
 apiVersion: source.toolkit.fluxcd.io/v1
