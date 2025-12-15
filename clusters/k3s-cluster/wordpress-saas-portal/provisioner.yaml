@@ -9,7 +9,7 @@ spec:
     matchLabels:
       app: provisioner
   strategy:
-    type: Recreate  # Only one provisioner at a time
+    type: Recreate # Only one provisioner at a time
   template:
     metadata:
       labels:
@@ -32,7 +32,7 @@ spec:
             runAsGroup: 65534
       containers:
         - name: provisioner
-          image: registry.gitlab.com/jacobmbanghart/wordpress-saas-portal/provisioner:latest # {"$imagepolicy": "flux-system:wordpress-saas-provisioner"}
+          image: registry.gitlab.com/jacobmbanghart/wordpress-saas-portal/provisioner:01b1f6fb29e81ddb47d6330f95367712163395c5 # {"$imagepolicy": "flux-system:wordpress-saas-provisioner"}
           imagePullPolicy: Always
           env:
             - name: DATABASE_URL
