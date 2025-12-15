@@ -80,6 +80,20 @@ spec:
     alphabetical:
       order: desc
 ---
+# GitRepository with SSH access for pushing image updates
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: flux-ssh
+  namespace: flux-system
+spec:
+  interval: 1m
+  url: ssh://git@gitlab.com/jacobmbanghart/flux.git
+  secretRef:
+    name: flux-ssh-key
+  ref:
+    branch: main
+---
 # Image Update Automation - automatically update manifests
 apiVersion: image.toolkit.fluxcd.io/v1beta2
 kind: ImageUpdateAutomation
@@ -90,7 +104,7 @@ spec:
   interval: 1m
   sourceRef:
     kind: GitRepository
-    name: flux-system
+    name: flux-ssh
   git:
     checkout:
       ref:
