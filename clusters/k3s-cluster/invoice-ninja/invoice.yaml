@@ -127,6 +127,8 @@ spec:
       storage:
         existingClaim: ivstoragepvc
     mariadb:
+      image:
+        tag: "10.11"  # Use current stable tag instead of old deleted one
       primary:
         persistence:
           existingClaim: ivmariapvc
