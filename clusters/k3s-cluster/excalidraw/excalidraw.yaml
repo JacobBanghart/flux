@@ -18,17 +18,10 @@ spec:
       labels:
         app: excalidraw
     spec:
-      # Note: Excalidraw uses nginx which requires write access to /var/cache/nginx
+      # Note: Excalidraw uses nginx which requires root privileges
       containers:
         - name: excalidraw
           image: excalidraw/excalidraw:sha-4bfc5bb
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
-              add:
-                - CHOWN
           resources:
             requests:
               cpu: "100m"
