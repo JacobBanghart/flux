@@ -22,7 +22,7 @@ metadata:
   name: convertx
   namespace: convertx
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: convertx
