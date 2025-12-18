@@ -119,6 +119,8 @@ spec:
     ingress:
       hostname: invoice-ninja.jacobbanghart.com
     nginx:
+      image:
+        tag: "latest"
       ingress:
         hostname: invoice-ninja.jacobbanghart.com
     persistence:
