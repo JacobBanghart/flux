@@ -128,16 +128,16 @@ spec:
         existingClaim: ivstoragepvc
     mariadb:
       image:
-        tag: "10.11"
+        tag: "latest"
       primary:
         persistence:
           existingClaim: ivmariapvc
     redis:
       image:
-        tag: "7.2"
+        tag: "latest"
       sentinel:
         image:
-          tag: "7.2"
+          tag: "latest"
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
