@@ -10,7 +10,6 @@ resources:
   - reconciler-cronjob.yaml
   - image-automation.yaml
   - ingress.yaml
-  - cloudflared.yaml
   # Note: Secrets are NOT included in this kustomization.
   # Apply secrets from serverk8sdeploywithk3s repo:
   #   kubectl apply -f wordpress-saas-portal.secret.yaml
