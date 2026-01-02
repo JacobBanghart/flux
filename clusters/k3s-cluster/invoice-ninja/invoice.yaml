@@ -118,11 +118,9 @@ spec:
     appURL: https://invoice-ninja.jacobbanghart.com
     ingress:
       hostname: invoice-ninja.jacobbanghart.com
-    nginx:
+    http:
       image:
         tag: "latest"
-      ingress:
-        hostname: invoice-ninja.jacobbanghart.com
     persistence:
       public:
         existingClaim: ivpublicpvc
