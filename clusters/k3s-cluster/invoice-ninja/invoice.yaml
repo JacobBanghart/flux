@@ -129,6 +129,8 @@ spec:
       storage:
         existingClaim: ivstoragepvc
     mariadb:
+      auth:
+        existingSecret: invoice-ninja-mariadb-auth
       image:
         tag: "latest"
       primary:
