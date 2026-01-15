@@ -28,6 +28,14 @@ data:
         - 10.0.0.0/8
         - 172.16.0.0/12
         - 127.0.0.1
+  sidebar-config.yaml: |
+    order:
+      - new_item: true
+        item: esphome
+        name: ESPHome
+        icon: mdi:chip
+        href: https://esphome.jacobbanghart.com
+        target: _blank
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -92,6 +100,9 @@ spec:
             - name: ha-config
               mountPath: /config/configuration.yaml
               subPath: configuration.yaml
+            - name: ha-config
+              mountPath: /config/www/sidebar-config.yaml
+              subPath: sidebar-config.yaml
           resources:
             requests:
               memory: "256Mi"
