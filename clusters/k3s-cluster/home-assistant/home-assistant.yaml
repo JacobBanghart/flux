@@ -34,7 +34,7 @@ data:
       esphome:
         title: "ESPHome"
         icon: mdi:chip
-        url: "http://127.0.0.1:6052"
+        url: "https://esphome.jacobbanghart.com"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
