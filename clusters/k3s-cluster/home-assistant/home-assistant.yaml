@@ -28,13 +28,6 @@ data:
         - 10.0.0.0/8
         - 172.16.0.0/12
         - 127.0.0.1
-
-    # ESPHome Dashboard panel (sidebar)
-    panel_iframe:
-      esphome:
-        title: "ESPHome"
-        icon: mdi:chip
-        url: "https://esphome.jacobbanghart.com"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
