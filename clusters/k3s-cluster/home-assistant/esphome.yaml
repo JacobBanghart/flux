@@ -82,7 +82,7 @@ kind: Secret
 metadata:
   name: esphome-basic-auth
   namespace: home-assistant
-type: kubernetes.io/basic-auth
+type: Opaque
 data:
   users: YWRtaW46JGFwcjEkaVhDTlo0Z1kkTWk4MjZSZ2JwNmEzZWI0bGN5VU1PLg==
 ---
