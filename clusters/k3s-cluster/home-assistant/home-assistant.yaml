@@ -85,6 +85,28 @@ spec:
       # Enable host network for mDNS discovery of WiFi devices
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
+      initContainers:
+        # Install HACS if not present
+        - name: install-hacs
+          image: alpine:latest
+          command:
+            - sh
+            - -c
+            - |
+              if [ ! -d /config/custom_components/hacs ]; then
+                echo "Installing HACS..."
+                apk add --no-cache wget unzip
+                wget -O /tmp/hacs.zip https://github.com/hacs/integration/releases/latest/download/hacs.zip
+                mkdir -p /config/custom_components/hacs
+                unzip /tmp/hacs.zip -d /config/custom_components/hacs
+                rm /tmp/hacs.zip
+                echo "HACS installed successfully"
+              else
+                echo "HACS already installed"
+              fi
+          volumeMounts:
+            - name: config
+              mountPath: /config
       containers:
         - name: home-assistant
           image: ghcr.io/home-assistant/home-assistant:2024.12
