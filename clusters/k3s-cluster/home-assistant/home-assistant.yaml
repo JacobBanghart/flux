@@ -28,6 +28,49 @@ data:
         - 10.0.0.0/8
         - 172.16.0.0/12
         - 127.0.0.1
+
+    # Use YAML mode for dashboards (GitOps managed)
+    lovelace:
+      mode: yaml
+      resources: []
+  ui-lovelace.yaml: |
+    title: Power Monitor
+    views:
+      - title: Power Usage
+        path: power
+        icon: mdi:flash
+        cards:
+          - type: history-graph
+            title: Power Consumption
+            hours_to_show: 24
+            entities:
+              - entity: sensor.smart_plug_1_power
+                name: Plug 1
+              - entity: sensor.smart_plug_2_power
+                name: Plug 2
+              - entity: sensor.smart_plug_3_power
+                name: Plug 3
+              - entity: sensor.smart_plug_4_power
+                name: Plug 4
+          - type: entities
+            title: Current Power
+            entities:
+              - entity: sensor.smart_plug_1_power
+              - entity: sensor.smart_plug_2_power
+              - entity: sensor.smart_plug_3_power
+              - entity: sensor.smart_plug_4_power
+          - type: history-graph
+            title: Energy Usage (kWh)
+            hours_to_show: 24
+            entities:
+              - entity: sensor.smart_plug_1_total_daily_energy
+                name: Plug 1
+              - entity: sensor.smart_plug_2_total_daily_energy
+                name: Plug 2
+              - entity: sensor.smart_plug_3_total_daily_energy
+                name: Plug 3
+              - entity: sensor.smart_plug_4_total_daily_energy
+                name: Plug 4
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -114,6 +157,9 @@ spec:
             - name: ha-config
               mountPath: /config/configuration.yaml
               subPath: configuration.yaml
+            - name: ha-config
+              mountPath: /config/ui-lovelace.yaml
+              subPath: ui-lovelace.yaml
           resources:
             requests:
               memory: "256Mi"
