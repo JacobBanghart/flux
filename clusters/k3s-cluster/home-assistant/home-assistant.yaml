@@ -16,6 +16,8 @@ data:
     # Load frontend themes from the themes folder
     frontend:
       themes: !include_dir_merge_named themes
+      extra_module_url:
+        - /hacsfiles/custom-sidebar/custom-sidebar.js
 
     automation: !include automations.yaml
     script: !include scripts.yaml
@@ -28,7 +30,7 @@ data:
         - 10.0.0.0/8
         - 172.16.0.0/12
         - 127.0.0.1
-  sidebar-config.yaml: |
+  sidebar-order.yaml: |
     order:
       - new_item: true
         item: esphome
@@ -123,8 +125,8 @@ spec:
               mountPath: /config/configuration.yaml
               subPath: configuration.yaml
             - name: ha-config
-              mountPath: /config/www/sidebar-config.yaml
-              subPath: sidebar-config.yaml
+              mountPath: /config/www/sidebar-order.yaml
+              subPath: sidebar-order.yaml
           resources:
             requests:
               memory: "256Mi"
