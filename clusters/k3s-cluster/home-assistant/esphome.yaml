@@ -76,15 +76,8 @@ spec:
 #   Then open http://localhost:6052
 # Or directly via hostNetwork: http://10.1.0.34:6052
 ---
-# Basic auth secret for ESPHome ingress
-apiVersion: v1
-kind: Secret
-metadata:
-  name: esphome-basic-auth
-  namespace: home-assistant
-type: Opaque
-data:
-  users: YWRtaW46JGFwcjEkaVhDTlo0Z1kkTWk4MjZSZ2JwNmEzZWI0bGN5VU1PLg==
+# Secret is in private serverk8sdeploywithk3s repo: esphome-basic-auth.secret.yaml
+# Apply manually: kubectl apply -f esphome-basic-auth.secret.yaml
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
