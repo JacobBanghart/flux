@@ -40,37 +40,101 @@ data:
         path: power
         icon: mdi:flash
         cards:
-          - type: history-graph
-            title: Power Consumption
-            hours_to_show: 24
-            entities:
-              - entity: sensor.smart_plug_1_power
-                name: Plug 1
-              - entity: sensor.smart_plug_2_power
-                name: Plug 2
-              - entity: sensor.smart_plug_3_power
-                name: Plug 3
-              - entity: sensor.smart_plug_4_power
-                name: Plug 4
+          # All Plugs Overview
           - type: entities
-            title: Current Power
+            title: All Smart Plugs
             entities:
-              - entity: sensor.smart_plug_1_power
-              - entity: sensor.smart_plug_2_power
-              - entity: sensor.smart_plug_3_power
-              - entity: sensor.smart_plug_4_power
+              - entity: switch.smart_plug_1_outlet_relay
+                name: Plug 1 Relay
+              - entity: switch.smart_plug_2_outlet_relay
+                name: Plug 2 Relay
+              - entity: switch.smart_plug_3_outlet_relay
+                name: Plug 3 Relay
+              - entity: switch.smart_plug_4_outlet_relay
+                name: Plug 4 Relay
+          
+          # Power readings
+          - type: entities
+            title: Current Power (Watts)
+            entities:
+              - entity: sensor.smart_plug_1_output_power_watts
+                name: Plug 1
+              - entity: sensor.smart_plug_2_output_power_watts
+                name: Plug 2
+              - entity: sensor.smart_plug_3_output_power_watts
+                name: Plug 3
+              - entity: sensor.smart_plug_4_output_power_watts
+                name: Plug 4
+
+          # Power history graph
           - type: history-graph
-            title: Energy Usage (kWh)
+            title: Power Consumption (24h)
             hours_to_show: 24
             entities:
-              - entity: sensor.smart_plug_1_total_daily_energy
+              - entity: sensor.smart_plug_1_output_power_watts
                 name: Plug 1
-              - entity: sensor.smart_plug_2_total_daily_energy
+              - entity: sensor.smart_plug_2_output_power_watts
                 name: Plug 2
-              - entity: sensor.smart_plug_3_total_daily_energy
+              - entity: sensor.smart_plug_3_output_power_watts
                 name: Plug 3
-              - entity: sensor.smart_plug_4_total_daily_energy
+              - entity: sensor.smart_plug_4_output_power_watts
                 name: Plug 4
+
+          # Voltage history
+          - type: history-graph
+            title: Voltage (24h)
+            hours_to_show: 24
+            entities:
+              - entity: sensor.smart_plug_1_output_voltage
+                name: Plug 1
+              - entity: sensor.smart_plug_2_output_voltage
+                name: Plug 2
+              - entity: sensor.smart_plug_3_output_voltage
+                name: Plug 3
+              - entity: sensor.smart_plug_4_output_voltage
+                name: Plug 4
+
+          # Power gauges
+          - type: horizontal-stack
+            cards:
+              - type: gauge
+                entity: sensor.smart_plug_1_output_power_watts
+                name: Plug 1
+                min: 0
+                max: 1800
+                severity:
+                  green: 0
+                  yellow: 500
+                  red: 1000
+              - type: gauge
+                entity: sensor.smart_plug_2_output_power_watts
+                name: Plug 2
+                min: 0
+                max: 1800
+                severity:
+                  green: 0
+                  yellow: 500
+                  red: 1000
+          - type: horizontal-stack
+            cards:
+              - type: gauge
+                entity: sensor.smart_plug_3_output_power_watts
+                name: Plug 3
+                min: 0
+                max: 1800
+                severity:
+                  green: 0
+                  yellow: 500
+                  red: 1000
+              - type: gauge
+                entity: sensor.smart_plug_4_output_power_watts
+                name: Plug 4
+                min: 0
+                max: 1800
+                severity:
+                  green: 0
+                  yellow: 500
+                  red: 1000
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
