@@ -43,9 +43,6 @@ data:
       plug_1_energy_weekly:
         source: sensor.jacobs_desktop_smart_plug_total_energy
         cycle: weekly
-      plug_1_energy_biweekly:
-        source: sensor.jacobs_desktop_smart_plug_total_energy
-        cycle: biweekly
       plug_1_energy_monthly:
         source: sensor.jacobs_desktop_smart_plug_total_energy
         cycle: monthly
@@ -56,9 +53,6 @@ data:
       plug_2_energy_weekly:
         source: sensor.smart_plug_2_total_energy
         cycle: weekly
-      plug_2_energy_biweekly:
-        source: sensor.smart_plug_2_total_energy
-        cycle: biweekly
       plug_2_energy_monthly:
         source: sensor.smart_plug_2_total_energy
         cycle: monthly
@@ -69,9 +63,6 @@ data:
       plug_3_energy_weekly:
         source: sensor.smart_plug_3_total_energy
         cycle: weekly
-      plug_3_energy_biweekly:
-        source: sensor.smart_plug_3_total_energy
-        cycle: biweekly
       plug_3_energy_monthly:
         source: sensor.smart_plug_3_total_energy
         cycle: monthly
@@ -82,9 +73,6 @@ data:
       plug_4_energy_weekly:
         source: sensor.smart_plug_4_total_energy
         cycle: weekly
-      plug_4_energy_biweekly:
-        source: sensor.smart_plug_4_total_energy
-        cycle: biweekly
       plug_4_energy_monthly:
         source: sensor.smart_plug_4_total_energy
         cycle: monthly
@@ -219,19 +207,6 @@ data:
               - entity: sensor.plug_3_energy_weekly
                 name: Plug 3
               - entity: sensor.plug_4_energy_weekly
-                name: Plug 4
-
-          # Bi-Weekly Energy
-          - type: entities
-            title: Bi-Weekly (kWh)
-            entities:
-              - entity: sensor.plug_1_energy_biweekly
-                name: Plug 1 - Desktop
-              - entity: sensor.plug_2_energy_biweekly
-                name: Plug 2
-              - entity: sensor.plug_3_energy_biweekly
-                name: Plug 3
-              - entity: sensor.plug_4_energy_biweekly
                 name: Plug 4
 
           # Monthly Energy
