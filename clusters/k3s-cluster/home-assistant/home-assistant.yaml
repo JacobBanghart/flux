@@ -56,15 +56,15 @@ data:
       plug_2_energy_monthly:
         source: sensor.smart_plug_2_total_energy
         cycle: monthly
-      # Smart Plug 3
+      # Smart Plug 3 - Home Server
       plug_3_energy_daily:
-        source: sensor.smart_plug_3_daily_energy
+        source: sensor.home_server_smart_plug_daily_energy
         cycle: daily
       plug_3_energy_weekly:
-        source: sensor.smart_plug_3_total_energy
+        source: sensor.home_server_smart_plug_total_energy
         cycle: weekly
       plug_3_energy_monthly:
-        source: sensor.smart_plug_3_total_energy
+        source: sensor.home_server_smart_plug_total_energy
         cycle: monthly
       # Smart Plug 4
       plug_4_energy_daily:
@@ -191,8 +191,8 @@ data:
                 name: Plug 1 - Desktop
               - entity: sensor.smart_plug_2_daily_energy
                 name: Plug 2
-              - entity: sensor.smart_plug_3_daily_energy
-                name: Plug 3
+              - entity: sensor.home_server_smart_plug_daily_energy
+                name: Plug 3 - Home Server
               - entity: sensor.smart_plug_4_daily_energy
                 name: Plug 4
 
@@ -230,8 +230,8 @@ data:
                 name: Plug 1 - Desktop
               - entity: sensor.smart_plug_2_total_energy
                 name: Plug 2
-              - entity: sensor.smart_plug_3_total_energy
-                name: Plug 3
+              - entity: sensor.home_server_smart_plug_total_energy
+                name: Plug 3 - Home Server
               - entity: sensor.smart_plug_4_total_energy
                 name: Plug 4
 
