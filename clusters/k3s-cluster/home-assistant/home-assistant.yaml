@@ -33,6 +33,61 @@ data:
     lovelace:
       mode: yaml
       resources: []
+
+    # Utility meters for tracking energy usage over periods
+    utility_meter:
+      # Smart Plug 1 - Jacobs Desktop
+      plug_1_energy_daily:
+        source: sensor.jacobs_desktop_smart_plug_daily_energy
+        cycle: daily
+      plug_1_energy_weekly:
+        source: sensor.jacobs_desktop_smart_plug_total_energy
+        cycle: weekly
+      plug_1_energy_biweekly:
+        source: sensor.jacobs_desktop_smart_plug_total_energy
+        cycle: biweekly
+      plug_1_energy_monthly:
+        source: sensor.jacobs_desktop_smart_plug_total_energy
+        cycle: monthly
+      # Smart Plug 2
+      plug_2_energy_daily:
+        source: sensor.smart_plug_2_daily_energy
+        cycle: daily
+      plug_2_energy_weekly:
+        source: sensor.smart_plug_2_total_energy
+        cycle: weekly
+      plug_2_energy_biweekly:
+        source: sensor.smart_plug_2_total_energy
+        cycle: biweekly
+      plug_2_energy_monthly:
+        source: sensor.smart_plug_2_total_energy
+        cycle: monthly
+      # Smart Plug 3
+      plug_3_energy_daily:
+        source: sensor.smart_plug_3_daily_energy
+        cycle: daily
+      plug_3_energy_weekly:
+        source: sensor.smart_plug_3_total_energy
+        cycle: weekly
+      plug_3_energy_biweekly:
+        source: sensor.smart_plug_3_total_energy
+        cycle: biweekly
+      plug_3_energy_monthly:
+        source: sensor.smart_plug_3_total_energy
+        cycle: monthly
+      # Smart Plug 4
+      plug_4_energy_daily:
+        source: sensor.smart_plug_4_daily_energy
+        cycle: daily
+      plug_4_energy_weekly:
+        source: sensor.smart_plug_4_total_energy
+        cycle: weekly
+      plug_4_energy_biweekly:
+        source: sensor.smart_plug_4_total_energy
+        cycle: biweekly
+      plug_4_energy_monthly:
+        source: sensor.smart_plug_4_total_energy
+        cycle: monthly
   ui-lovelace.yaml: |
     title: Power Monitor
     views:
@@ -135,6 +190,89 @@ data:
                   green: 0
                   yellow: 500
                   red: 1000
+
+      - title: Energy Usage
+        path: energy
+        icon: mdi:lightning-bolt
+        cards:
+          # Daily Energy Summary
+          - type: entities
+            title: Today's Energy (kWh)
+            entities:
+              - entity: sensor.jacobs_desktop_smart_plug_daily_energy
+                name: Plug 1 - Desktop
+              - entity: sensor.smart_plug_2_daily_energy
+                name: Plug 2
+              - entity: sensor.smart_plug_3_daily_energy
+                name: Plug 3
+              - entity: sensor.smart_plug_4_daily_energy
+                name: Plug 4
+
+          # Weekly Energy
+          - type: entities
+            title: This Week (kWh)
+            entities:
+              - entity: sensor.plug_1_energy_weekly
+                name: Plug 1 - Desktop
+              - entity: sensor.plug_2_energy_weekly
+                name: Plug 2
+              - entity: sensor.plug_3_energy_weekly
+                name: Plug 3
+              - entity: sensor.plug_4_energy_weekly
+                name: Plug 4
+
+          # Bi-Weekly Energy
+          - type: entities
+            title: Bi-Weekly (kWh)
+            entities:
+              - entity: sensor.plug_1_energy_biweekly
+                name: Plug 1 - Desktop
+              - entity: sensor.plug_2_energy_biweekly
+                name: Plug 2
+              - entity: sensor.plug_3_energy_biweekly
+                name: Plug 3
+              - entity: sensor.plug_4_energy_biweekly
+                name: Plug 4
+
+          # Monthly Energy
+          - type: entities
+            title: This Month (kWh)
+            entities:
+              - entity: sensor.plug_1_energy_monthly
+                name: Plug 1 - Desktop
+              - entity: sensor.plug_2_energy_monthly
+                name: Plug 2
+              - entity: sensor.plug_3_energy_monthly
+                name: Plug 3
+              - entity: sensor.plug_4_energy_monthly
+                name: Plug 4
+
+          # Total Energy (Lifetime)
+          - type: entities
+            title: Total Energy (Lifetime kWh)
+            entities:
+              - entity: sensor.jacobs_desktop_smart_plug_total_energy
+                name: Plug 1 - Desktop
+              - entity: sensor.smart_plug_2_total_energy
+                name: Plug 2
+              - entity: sensor.smart_plug_3_total_energy
+                name: Plug 3
+              - entity: sensor.smart_plug_4_total_energy
+                name: Plug 4
+
+          # Energy History Graph
+          - type: history-graph
+            title: Daily Energy (7 days)
+            hours_to_show: 168
+            entities:
+              - entity: sensor.plug_1_energy_daily
+                name: Plug 1
+              - entity: sensor.plug_2_energy_daily
+                name: Plug 2
+              - entity: sensor.plug_3_energy_daily
+                name: Plug 3
+              - entity: sensor.plug_4_energy_daily
+                name: Plug 4
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
