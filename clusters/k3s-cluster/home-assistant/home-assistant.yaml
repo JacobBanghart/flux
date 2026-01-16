@@ -154,26 +154,18 @@ data:
             title: All Smart Plugs
             entities:
               - entity: switch.smart_plug_1_outlet_relay
-                name: Plug 1 Relay
               - entity: switch.smart_plug_2_outlet_relay
-                name: Plug 2 Relay
               - entity: switch.smart_plug_3_outlet_relay
-                name: Plug 3 Relay
               - entity: switch.smart_plug_4_outlet_relay
-                name: Plug 4 Relay
           
           # Power readings
           - type: entities
             title: Current Power (Watts)
             entities:
               - entity: sensor.smart_plug_1_power
-                name: Plug 1
               - entity: sensor.smart_plug_2_power
-                name: Plug 2
               - entity: sensor.smart_plug_3_power
-                name: Plug 3
               - entity: sensor.smart_plug_4_power
-                name: Plug 4
 
           # Power history graph
           - type: history-graph
@@ -181,13 +173,9 @@ data:
             hours_to_show: 24
             entities:
               - entity: sensor.smart_plug_1_power
-                name: Plug 1
               - entity: sensor.smart_plug_2_power
-                name: Plug 2
               - entity: sensor.smart_plug_3_power
-                name: Plug 3
               - entity: sensor.smart_plug_4_power
-                name: Plug 4
 
           # Voltage history
           - type: history-graph
@@ -195,20 +183,15 @@ data:
             hours_to_show: 24
             entities:
               - entity: sensor.smart_plug_1_voltage
-                name: Plug 1
               - entity: sensor.smart_plug_2_voltage
-                name: Plug 2
               - entity: sensor.smart_plug_3_voltage
-                name: Plug 3
               - entity: sensor.smart_plug_4_voltage
-                name: Plug 4
 
           # Power gauges
           - type: horizontal-stack
             cards:
               - type: gauge
                 entity: sensor.smart_plug_1_power
-                name: Plug 1
                 min: 0
                 max: 1800
                 severity:
@@ -217,7 +200,6 @@ data:
                   red: 1000
               - type: gauge
                 entity: sensor.smart_plug_2_power
-                name: Plug 2
                 min: 0
                 max: 1800
                 severity:
@@ -228,7 +210,6 @@ data:
             cards:
               - type: gauge
                 entity: sensor.smart_plug_3_power
-                name: Plug 3
                 min: 0
                 max: 1800
                 severity:
@@ -237,7 +218,6 @@ data:
                   red: 1000
               - type: gauge
                 entity: sensor.smart_plug_4_power
-                name: Plug 4
                 min: 0
                 max: 1800
                 severity:
@@ -254,52 +234,36 @@ data:
             title: Today's Energy (kWh)
             entities:
               - entity: sensor.smart_plug_1_daily_energy
-                name: Plug 1
               - entity: sensor.smart_plug_2_daily_energy
-                name: Plug 2
               - entity: sensor.smart_plug_3_daily_energy
-                name: Plug 3
               - entity: sensor.smart_plug_4_daily_energy
-                name: Plug 4
 
           # Weekly Energy
           - type: entities
             title: This Week (kWh)
             entities:
               - entity: sensor.plug_1_energy_weekly
-                name: Plug 1
               - entity: sensor.plug_2_energy_weekly
-                name: Plug 2
               - entity: sensor.plug_3_energy_weekly
-                name: Plug 3
               - entity: sensor.plug_4_energy_weekly
-                name: Plug 4
 
           # Monthly Energy
           - type: entities
             title: This Month (kWh)
             entities:
               - entity: sensor.plug_1_energy_monthly
-                name: Plug 1
               - entity: sensor.plug_2_energy_monthly
-                name: Plug 2
               - entity: sensor.plug_3_energy_monthly
-                name: Plug 3
               - entity: sensor.plug_4_energy_monthly
-                name: Plug 4
 
           # Lifetime Energy (persisted in HA, survives device reboots)
           - type: entities
             title: Lifetime Energy (kWh)
             entities:
               - entity: input_number.plug_1_lifetime_energy
-                name: Plug 1
               - entity: input_number.plug_2_lifetime_energy
-                name: Plug 2
               - entity: input_number.plug_3_lifetime_energy
-                name: Plug 3
               - entity: input_number.plug_4_lifetime_energy
-                name: Plug 4
 
           # Energy History Graph
           - type: history-graph
@@ -307,13 +271,9 @@ data:
             hours_to_show: 168
             entities:
               - entity: sensor.smart_plug_1_daily_energy
-                name: Plug 1
               - entity: sensor.smart_plug_2_daily_energy
-                name: Plug 2
               - entity: sensor.smart_plug_3_daily_energy
-                name: Plug 3
               - entity: sensor.smart_plug_4_daily_energy
-                name: Plug 4
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
