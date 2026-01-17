@@ -243,27 +243,39 @@ data:
             title: This Week (kWh)
             entities:
               - entity: sensor.plug_1_energy_weekly
+                name: Jacobs Desktop Smart Plug
               - entity: sensor.plug_2_energy_weekly
+                name: Sierras Desktop Smart Plug
               - entity: sensor.plug_3_energy_weekly
+                name: Home Server Smart Plug
               - entity: sensor.plug_4_energy_weekly
+                name: Bedroom Lamp Control
 
           # Monthly Energy
           - type: entities
             title: This Month (kWh)
             entities:
               - entity: sensor.plug_1_energy_monthly
+                name: Jacobs Desktop Smart Plug
               - entity: sensor.plug_2_energy_monthly
+                name: Sierras Desktop Smart Plug
               - entity: sensor.plug_3_energy_monthly
+                name: Home Server Smart Plug
               - entity: sensor.plug_4_energy_monthly
+                name: Bedroom Lamp Control
 
           # Lifetime Energy (persisted in HA, survives device reboots)
           - type: entities
             title: Lifetime Energy (kWh)
             entities:
               - entity: input_number.plug_1_lifetime_energy
+                name: Jacobs Desktop Smart Plug
               - entity: input_number.plug_2_lifetime_energy
+                name: Sierras Desktop Smart Plug
               - entity: input_number.plug_3_lifetime_energy
+                name: Home Server Smart Plug
               - entity: input_number.plug_4_lifetime_energy
+                name: Bedroom Lamp Control
 
           # Energy History Graph
           - type: history-graph
