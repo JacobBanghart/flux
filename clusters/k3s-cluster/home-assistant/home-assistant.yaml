@@ -43,6 +43,9 @@ data:
       plug_1_energy_monthly:
         source: sensor.jacobs_desktop_smart_plug_daily_energy
         cycle: monthly
+      plug_1_energy_yearly:
+        source: sensor.jacobs_desktop_smart_plug_daily_energy
+        cycle: yearly
       # Smart Plug 2
       plug_2_energy_weekly:
         source: sensor.smart_plug_2_daily_energy
@@ -50,6 +53,9 @@ data:
       plug_2_energy_monthly:
         source: sensor.smart_plug_2_daily_energy
         cycle: monthly
+      plug_2_energy_yearly:
+        source: sensor.smart_plug_2_daily_energy
+        cycle: yearly
       # Smart Plug 3 (entity ID uses friendly_name until ESPHome reflash)
       plug_3_energy_weekly:
         source: sensor.home_server_smart_plug_daily_energy
@@ -57,6 +63,9 @@ data:
       plug_3_energy_monthly:
         source: sensor.home_server_smart_plug_daily_energy
         cycle: monthly
+      plug_3_energy_yearly:
+        source: sensor.home_server_smart_plug_daily_energy
+        cycle: yearly
       # Smart Plug 4
       plug_4_energy_weekly:
         source: sensor.smart_plug_4_daily_energy
@@ -64,6 +73,9 @@ data:
       plug_4_energy_monthly:
         source: sensor.smart_plug_4_daily_energy
         cycle: monthly
+      plug_4_energy_yearly:
+        source: sensor.smart_plug_4_daily_energy
+        cycle: yearly
   ui-lovelace.yaml: |
     title: Power Monitor
     views:
@@ -184,6 +196,19 @@ data:
               - entity: sensor.plug_3_energy_monthly
                 name: Home Server Smart Plug
               - entity: sensor.plug_4_energy_monthly
+                name: Bedroom Lamp Control
+
+          # Yearly Energy
+          - type: entities
+            title: This Year (kWh)
+            entities:
+              - entity: sensor.plug_1_energy_yearly
+                name: Jacobs Desktop Smart Plug
+              - entity: sensor.plug_2_energy_yearly
+                name: Sierras Desktop Smart Plug
+              - entity: sensor.plug_3_energy_yearly
+                name: Home Server Smart Plug
+              - entity: sensor.plug_4_energy_yearly
                 name: Bedroom Lamp Control
 
           # Energy History Graph
