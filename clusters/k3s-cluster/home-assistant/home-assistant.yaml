@@ -34,85 +34,7 @@ data:
       mode: yaml
       resources: []
 
-    # Input numbers for lifetime energy tracking (persists across device reboots)
-    input_number:
-      plug_1_lifetime_energy:
-        name: "Plug 1 Lifetime Energy"
-        min: 0
-        max: 999999
-        step: 0.001
-        unit_of_measurement: kWh
-        mode: box
-      plug_2_lifetime_energy:
-        name: "Plug 2 Lifetime Energy"
-        min: 0
-        max: 999999
-        step: 0.001
-        unit_of_measurement: kWh
-        mode: box
-      plug_3_lifetime_energy:
-        name: "Plug 3 Lifetime Energy"
-        min: 0
-        max: 999999
-        step: 0.001
-        unit_of_measurement: kWh
-        mode: box
-      plug_4_lifetime_energy:
-        name: "Plug 4 Lifetime Energy"
-        min: 0
-        max: 999999
-        step: 0.001
-        unit_of_measurement: kWh
-        mode: box
-
-    # Automations for accumulating daily energy to lifetime
-    automation:
-      - id: accumulate_plug_1_daily_energy
-        alias: "Accumulate Plug 1 Daily Energy"
-        trigger:
-          - platform: time
-            at: "23:59:50"
-        action:
-          - service: input_number.set_value
-            target:
-              entity_id: input_number.plug_1_lifetime_energy
-            data:
-              value: "{{ states('input_number.plug_1_lifetime_energy') | float + states('sensor.jacobs_desktop_smart_plug_daily_energy') | float }}"
-      - id: accumulate_plug_2_daily_energy
-        alias: "Accumulate Plug 2 Daily Energy"
-        trigger:
-          - platform: time
-            at: "23:59:50"
-        action:
-          - service: input_number.set_value
-            target:
-              entity_id: input_number.plug_2_lifetime_energy
-            data:
-              value: "{{ states('input_number.plug_2_lifetime_energy') | float + states('sensor.smart_plug_2_daily_energy') | float }}"
-      - id: accumulate_plug_3_daily_energy
-        alias: "Accumulate Plug 3 Daily Energy"
-        trigger:
-          - platform: time
-            at: "23:59:50"
-        action:
-          - service: input_number.set_value
-            target:
-              entity_id: input_number.plug_3_lifetime_energy
-            data:
-              value: "{{ states('input_number.plug_3_lifetime_energy') | float + states('sensor.home_server_smart_plug_daily_energy') | float }}"
-      - id: accumulate_plug_4_daily_energy
-        alias: "Accumulate Plug 4 Daily Energy"
-        trigger:
-          - platform: time
-            at: "23:59:50"
-        action:
-          - service: input_number.set_value
-            target:
-              entity_id: input_number.plug_4_lifetime_energy
-            data:
-              value: "{{ states('input_number.plug_4_lifetime_energy') | float + states('sensor.smart_plug_4_daily_energy') | float }}"
-
-    # Utility meters for tracking energy usage over periods (using stable object_id entity names)
+    # Utility meters for tracking energy usage over periods
     utility_meter:
       # Smart Plug 1 (entity ID uses friendly_name until ESPHome reflash)
       plug_1_energy_weekly:
@@ -262,19 +184,6 @@ data:
               - entity: sensor.plug_3_energy_monthly
                 name: Home Server Smart Plug
               - entity: sensor.plug_4_energy_monthly
-                name: Bedroom Lamp Control
-
-          # Lifetime Energy (persisted in HA, survives device reboots)
-          - type: entities
-            title: Lifetime Energy (kWh)
-            entities:
-              - entity: input_number.plug_1_lifetime_energy
-                name: Jacobs Desktop Smart Plug
-              - entity: input_number.plug_2_lifetime_energy
-                name: Sierras Desktop Smart Plug
-              - entity: input_number.plug_3_lifetime_energy
-                name: Home Server Smart Plug
-              - entity: input_number.plug_4_lifetime_energy
                 name: Bedroom Lamp Control
 
           # Energy History Graph
