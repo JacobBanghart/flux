@@ -77,7 +77,7 @@ data:
             target:
               entity_id: input_number.plug_1_lifetime_energy
             data:
-              value: "{{ states('input_number.plug_1_lifetime_energy') | float + states('sensor.smart_plug_1_daily_energy') | float }}"
+              value: "{{ states('input_number.plug_1_lifetime_energy') | float + states('sensor.jacobs_desktop_smart_plug_daily_energy') | float }}"
       - id: accumulate_plug_2_daily_energy
         alias: "Accumulate Plug 2 Daily Energy"
         trigger:
@@ -99,7 +99,7 @@ data:
             target:
               entity_id: input_number.plug_3_lifetime_energy
             data:
-              value: "{{ states('input_number.plug_3_lifetime_energy') | float + states('sensor.smart_plug_3_daily_energy') | float }}"
+              value: "{{ states('input_number.plug_3_lifetime_energy') | float + states('sensor.home_server_smart_plug_daily_energy') | float }}"
       - id: accumulate_plug_4_daily_energy
         alias: "Accumulate Plug 4 Daily Energy"
         trigger:
@@ -114,12 +114,12 @@ data:
 
     # Utility meters for tracking energy usage over periods (using stable object_id entity names)
     utility_meter:
-      # Smart Plug 1
+      # Smart Plug 1 (entity ID uses friendly_name until ESPHome reflash)
       plug_1_energy_weekly:
-        source: sensor.smart_plug_1_daily_energy
+        source: sensor.jacobs_desktop_smart_plug_daily_energy
         cycle: weekly
       plug_1_energy_monthly:
-        source: sensor.smart_plug_1_daily_energy
+        source: sensor.jacobs_desktop_smart_plug_daily_energy
         cycle: monthly
       # Smart Plug 2
       plug_2_energy_weekly:
@@ -128,12 +128,12 @@ data:
       plug_2_energy_monthly:
         source: sensor.smart_plug_2_daily_energy
         cycle: monthly
-      # Smart Plug 3
+      # Smart Plug 3 (entity ID uses friendly_name until ESPHome reflash)
       plug_3_energy_weekly:
-        source: sensor.smart_plug_3_daily_energy
+        source: sensor.home_server_smart_plug_daily_energy
         cycle: weekly
       plug_3_energy_monthly:
-        source: sensor.smart_plug_3_daily_energy
+        source: sensor.home_server_smart_plug_daily_energy
         cycle: monthly
       # Smart Plug 4
       plug_4_energy_weekly:
@@ -162,36 +162,36 @@ data:
           - type: entities
             title: Current Power (Watts)
             entities:
-              - entity: sensor.smart_plug_1_power
-              - entity: sensor.smart_plug_2_power
-              - entity: sensor.smart_plug_3_power
-              - entity: sensor.smart_plug_4_power
+              - entity: sensor.smart_plug_1_output_power_watts
+              - entity: sensor.smart_plug_2_output_power_watts
+              - entity: sensor.smart_plug_3_output_power_watts
+              - entity: sensor.smart_plug_4_output_power_watts
 
           # Power history graph
           - type: history-graph
             title: Power Consumption (24h)
             hours_to_show: 24
             entities:
-              - entity: sensor.smart_plug_1_power
-              - entity: sensor.smart_plug_2_power
-              - entity: sensor.smart_plug_3_power
-              - entity: sensor.smart_plug_4_power
+              - entity: sensor.smart_plug_1_output_power_watts
+              - entity: sensor.smart_plug_2_output_power_watts
+              - entity: sensor.smart_plug_3_output_power_watts
+              - entity: sensor.smart_plug_4_output_power_watts
 
           # Voltage history
           - type: history-graph
             title: Voltage (24h)
             hours_to_show: 24
             entities:
-              - entity: sensor.smart_plug_1_voltage
-              - entity: sensor.smart_plug_2_voltage
-              - entity: sensor.smart_plug_3_voltage
-              - entity: sensor.smart_plug_4_voltage
+              - entity: sensor.smart_plug_1_output_voltage
+              - entity: sensor.smart_plug_2_output_voltage
+              - entity: sensor.smart_plug_3_output_voltage
+              - entity: sensor.smart_plug_4_output_voltage
 
           # Power gauges
           - type: horizontal-stack
             cards:
               - type: gauge
-                entity: sensor.smart_plug_1_power
+                entity: sensor.smart_plug_1_output_power_watts
                 min: 0
                 max: 1800
                 severity:
@@ -199,7 +199,7 @@ data:
                   yellow: 500
                   red: 1000
               - type: gauge
-                entity: sensor.smart_plug_2_power
+                entity: sensor.smart_plug_2_output_power_watts
                 min: 0
                 max: 1800
                 severity:
@@ -209,7 +209,7 @@ data:
           - type: horizontal-stack
             cards:
               - type: gauge
-                entity: sensor.smart_plug_3_power
+                entity: sensor.smart_plug_3_output_power_watts
                 min: 0
                 max: 1800
                 severity:
@@ -217,7 +217,7 @@ data:
                   yellow: 500
                   red: 1000
               - type: gauge
-                entity: sensor.smart_plug_4_power
+                entity: sensor.smart_plug_4_output_power_watts
                 min: 0
                 max: 1800
                 severity:
@@ -233,9 +233,9 @@ data:
           - type: entities
             title: Today's Energy (kWh)
             entities:
-              - entity: sensor.smart_plug_1_daily_energy
+              - entity: sensor.jacobs_desktop_smart_plug_daily_energy
               - entity: sensor.smart_plug_2_daily_energy
-              - entity: sensor.smart_plug_3_daily_energy
+              - entity: sensor.home_server_smart_plug_daily_energy
               - entity: sensor.smart_plug_4_daily_energy
 
           # Weekly Energy
@@ -270,9 +270,9 @@ data:
             title: Daily Energy (7 days)
             hours_to_show: 168
             entities:
-              - entity: sensor.smart_plug_1_daily_energy
+              - entity: sensor.jacobs_desktop_smart_plug_daily_energy
               - entity: sensor.smart_plug_2_daily_energy
-              - entity: sensor.smart_plug_3_daily_energy
+              - entity: sensor.home_server_smart_plug_daily_energy
               - entity: sensor.smart_plug_4_daily_energy
 ---
 apiVersion: v1
