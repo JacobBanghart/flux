@@ -339,11 +339,10 @@ metadata:
   namespace: home-assistant
 spec:
   replicas: 1
+  # NOTE: Recreate is required because hostNetwork: true binds to host port 8123
+  # Rolling updates would cause port conflicts with two pods on the same host
   strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 0
-      maxSurge: 1
+    type: Recreate
   selector:
     matchLabels:
       app: home-assistant
