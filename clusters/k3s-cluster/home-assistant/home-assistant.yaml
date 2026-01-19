@@ -78,13 +78,12 @@ data:
         cycle: yearly
 
     # Proxmox VE Integration
-    # Create API token: pveum user token add homeassistant@pve ha-token --privsep=0
+    # On Proxmox: pveum passwd homeassistant@pve (to set password)
     # Assign permissions: pveum aclmod / -user homeassistant@pve -role PVEAuditor
     proxmoxve:
       - host: !secret proxmox_host
         username: !secret proxmox_username
-        token_name: !secret proxmox_token_name
-        token_value: !secret proxmox_token_value
+        password: !secret proxmox_password
         verify_ssl: false
         nodes:
           - node: pve  # Change to your node name
