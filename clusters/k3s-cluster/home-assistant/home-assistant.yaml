@@ -86,11 +86,12 @@ data:
         password: !secret proxmox_password
         verify_ssl: false
         nodes:
-          - node: pve  # Change to your node name
+          - node: pve
             vms:
-              - 100  # Add your VM IDs
-            containers:
-              - 100  # Add your LXC IDs
+              - 101  # pihole
+              - 102  # dev
+              - 103  # truenas
+              - 104  # ryan
 
   ui-lovelace.yaml: |
     title: Power Monitor
