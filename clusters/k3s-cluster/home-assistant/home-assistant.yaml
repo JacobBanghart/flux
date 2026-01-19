@@ -76,6 +76,23 @@ data:
       plug_4_energy_yearly:
         source: sensor.smart_plug_4_daily_energy
         cycle: yearly
+
+    # Proxmox VE Integration
+    # Create API token: pveum user token add homeassistant@pve ha-token --privsep=0
+    # Assign permissions: pveum aclmod / -user homeassistant@pve -role PVEAuditor
+    proxmoxve:
+      - host: !secret proxmox_host
+        username: !secret proxmox_username
+        token_name: !secret proxmox_token_name
+        token_value: !secret proxmox_token_value
+        verify_ssl: false
+        nodes:
+          - node: pve  # Change to your node name
+            vms:
+              - 100  # Add your VM IDs
+            containers:
+              - 100  # Add your LXC IDs
+
   ui-lovelace.yaml: |
     title: Power Monitor
     views:
@@ -220,6 +237,73 @@ data:
               - entity: sensor.smart_plug_2_daily_energy
               - entity: sensor.home_server_smart_plug_daily_energy
               - entity: sensor.smart_plug_4_daily_energy
+
+      - title: Server Health
+        path: server
+        icon: mdi:server
+        cards:
+          # Proxmox Node Overview
+          - type: entities
+            title: Proxmox Node
+            entities:
+              - entity: sensor.pve_cpu_usage
+                name: CPU Usage
+              - entity: sensor.pve_memory_usage
+                name: Memory Usage
+              - entity: sensor.pve_disk_usage
+                name: Disk Usage
+              - entity: sensor.pve_uptime
+                name: Uptime
+
+          # Temperature Gauges (if available via Glances or sensors)
+          - type: horizontal-stack
+            cards:
+              - type: gauge
+                entity: sensor.pve_cpu_usage
+                name: CPU
+                min: 0
+                max: 100
+                unit: "%"
+                severity:
+                  green: 0
+                  yellow: 60
+                  red: 85
+              - type: gauge
+                entity: sensor.pve_memory_usage
+                name: Memory
+                min: 0
+                max: 100
+                unit: "%"
+                severity:
+                  green: 0
+                  yellow: 70
+                  red: 90
+
+          # VMs and Containers Status
+          - type: entities
+            title: VMs & Containers
+            show_header_toggle: false
+            entities:
+              # Update these entity IDs after integration setup
+              # They'll be named like: binary_sensor.pve_vm_NAME_running
+              - entity: binary_sensor.pve_running
+                name: Proxmox Node
+
+          # Resource History
+          - type: history-graph
+            title: Proxmox Resources (24h)
+            hours_to_show: 24
+            entities:
+              - entity: sensor.pve_cpu_usage
+              - entity: sensor.pve_memory_usage
+
+          # Power vs CPU Correlation
+          - type: history-graph
+            title: Server Power vs CPU
+            hours_to_show: 24
+            entities:
+              - entity: sensor.home_server_smart_plug_output_power_watts
+              - entity: sensor.pve_cpu_usage
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -309,6 +393,9 @@ spec:
             - name: ha-config
               mountPath: /config/ui-lovelace.yaml
               subPath: ui-lovelace.yaml
+            - name: ha-secrets
+              mountPath: /config/secrets.yaml
+              subPath: secrets.yaml
           resources:
             requests:
               memory: "256Mi"
@@ -337,6 +424,9 @@ spec:
         - name: ha-config
           configMap:
             name: home-assistant-config
+        - name: ha-secrets
+          secret:
+            secretName: home-assistant-secrets
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
