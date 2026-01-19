@@ -86,7 +86,7 @@ data:
         password: !secret proxmox_password
         verify_ssl: false
         nodes:
-          - node: pve
+          - node: prox
             vms:
               - 101  # pihole
               - 102  # dev
