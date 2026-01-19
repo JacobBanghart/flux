@@ -93,11 +93,6 @@ data:
               - 103  # truenas
               - 104  # ryan
 
-    # Glances Integration (CPU, memory, disk, network sensors)
-    # Provides detailed host metrics from Proxmox server
-    glances:
-      - host: !secret proxmox_host
-        port: 61209
   ui-lovelace.yaml: |
     title: Power Monitor
     views:
@@ -247,41 +242,6 @@ data:
         path: server
         icon: mdi:server
         cards:
-          # Proxmox Host Stats (via Glances)
-          - type: entities
-            title: Proxmox Host
-            entities:
-              - entity: sensor.prox_cpu_used
-                name: CPU Usage
-              - entity: sensor.prox_ram_used_percent
-                name: Memory Usage
-              - entity: sensor.prox_disk_used_percent
-                name: Disk Usage
-
-          # CPU & Memory Gauges
-          - type: horizontal-stack
-            cards:
-              - type: gauge
-                entity: sensor.prox_cpu_used
-                name: CPU
-                min: 0
-                max: 100
-                unit: "%"
-                severity:
-                  green: 0
-                  yellow: 60
-                  red: 85
-              - type: gauge
-                entity: sensor.prox_ram_used_percent
-                name: Memory
-                min: 0
-                max: 100
-                unit: "%"
-                severity:
-                  green: 0
-                  yellow: 70
-                  red: 90
-
           # VMs Status (from Proxmox integration)
           - type: entities
             title: Virtual Machines
@@ -296,21 +256,12 @@ data:
               - entity: binary_sensor.prox_ryan
                 name: Ryan VM
 
-          # Resource History
+          # Server Power
           - type: history-graph
-            title: Proxmox Resources (24h)
-            hours_to_show: 24
-            entities:
-              - entity: sensor.prox_cpu_used
-              - entity: sensor.prox_ram_used_percent
-
-          # Power vs CPU Correlation
-          - type: history-graph
-            title: Server Power vs CPU
+            title: Server Power (24h)
             hours_to_show: 24
             entities:
               - entity: sensor.home_server_smart_plug_output_power_watts
-              - entity: sensor.prox_cpu_used
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
