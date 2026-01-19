@@ -77,7 +77,7 @@ data:
         source: sensor.smart_plug_4_daily_energy
         cycle: yearly
 
-    # Proxmox VE Integration
+    # Proxmox VE Integration (binary sensors for VM status only)
     # On Proxmox: pveum passwd homeassistant@pve (to set password)
     # Assign permissions: pveum aclmod / -user homeassistant@pve -role PVEAuditor
     proxmoxve:
@@ -93,6 +93,11 @@ data:
               - 103  # truenas
               - 104  # ryan
 
+    # Glances Integration (CPU, memory, disk, network sensors)
+    # Provides detailed host metrics from Proxmox server
+    glances:
+      - host: !secret proxmox_host
+        port: 61209
   ui-lovelace.yaml: |
     title: Power Monitor
     views:
@@ -242,24 +247,22 @@ data:
         path: server
         icon: mdi:server
         cards:
-          # Proxmox Node Overview
+          # Proxmox Host Stats (via Glances)
           - type: entities
-            title: Proxmox Node
+            title: Proxmox Host
             entities:
-              - entity: sensor.pve_cpu_usage
+              - entity: sensor.prox_cpu_used
                 name: CPU Usage
-              - entity: sensor.pve_memory_usage
+              - entity: sensor.prox_ram_used_percent
                 name: Memory Usage
-              - entity: sensor.pve_disk_usage
+              - entity: sensor.prox_disk_used_percent
                 name: Disk Usage
-              - entity: sensor.pve_uptime
-                name: Uptime
 
-          # Temperature Gauges (if available via Glances or sensors)
+          # CPU & Memory Gauges
           - type: horizontal-stack
             cards:
               - type: gauge
-                entity: sensor.pve_cpu_usage
+                entity: sensor.prox_cpu_used
                 name: CPU
                 min: 0
                 max: 100
@@ -269,7 +272,7 @@ data:
                   yellow: 60
                   red: 85
               - type: gauge
-                entity: sensor.pve_memory_usage
+                entity: sensor.prox_ram_used_percent
                 name: Memory
                 min: 0
                 max: 100
@@ -279,23 +282,27 @@ data:
                   yellow: 70
                   red: 90
 
-          # VMs and Containers Status
+          # VMs Status (from Proxmox integration)
           - type: entities
-            title: VMs & Containers
+            title: Virtual Machines
             show_header_toggle: false
             entities:
-              # Update these entity IDs after integration setup
-              # They'll be named like: binary_sensor.pve_vm_NAME_running
-              - entity: binary_sensor.pve_running
-                name: Proxmox Node
+              - entity: binary_sensor.prox_pihole
+                name: Pi-hole VM
+              - entity: binary_sensor.prox_dev
+                name: Dev VM
+              - entity: binary_sensor.prox_truenas
+                name: TrueNAS VM
+              - entity: binary_sensor.prox_ryan
+                name: Ryan VM
 
           # Resource History
           - type: history-graph
             title: Proxmox Resources (24h)
             hours_to_show: 24
             entities:
-              - entity: sensor.pve_cpu_usage
-              - entity: sensor.pve_memory_usage
+              - entity: sensor.prox_cpu_used
+              - entity: sensor.prox_ram_used_percent
 
           # Power vs CPU Correlation
           - type: history-graph
@@ -303,7 +310,7 @@ data:
             hours_to_show: 24
             entities:
               - entity: sensor.home_server_smart_plug_output_power_watts
-              - entity: sensor.pve_cpu_usage
+              - entity: sensor.prox_cpu_used
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
