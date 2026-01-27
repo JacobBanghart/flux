@@ -243,7 +243,7 @@ metadata:
   labels:
     app: proxmox-proxy
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: proxmox-proxy
