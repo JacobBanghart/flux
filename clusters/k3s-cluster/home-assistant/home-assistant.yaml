@@ -104,11 +104,8 @@ data:
           - type: entities
             title: All Smart Plugs
             entities:
-              - entity: switch.smart_plug_1_outlet_relay
-              - entity: switch.smart_plug_2_outlet_relay
-              - entity: switch.smart_plug_3_outlet_relay
               - entity: switch.smart_plug_4_outlet_relay
-          
+
           # Power readings
           - type: entities
             title: Current Power (Watts)
