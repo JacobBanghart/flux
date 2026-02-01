@@ -61,6 +61,8 @@ spec:
                   key: CF_API_KEY
             - name: CF_PAGE_URL
               value: "https://www.curseforge.com/minecraft/modpacks/all-the-mods-10"
+            - name: CF_FILENAME_MATCHER
+              value: "5.4"
             - name: MODE
               value: "survival"
             - name: OPS
