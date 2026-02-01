@@ -39,11 +39,11 @@ spec:
           tty: true
           resources:
             requests:
-              cpu: "500m"
-              memory: "2Gi"
-            limits:
               cpu: "4"
-              memory: "8Gi"
+              memory: "12Gi"
+            limits:
+              cpu: "12"
+              memory: "24Gi"
           ports:
             - containerPort: 25565
               protocol: TCP
