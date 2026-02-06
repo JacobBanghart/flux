@@ -65,6 +65,8 @@ spec:
               value: "5.4"
             - name: MODE
               value: "survival"
+            - name: ALLOW_FLIGHT
+              value: "TRUE"
             - name: OPS
               value: "Jqwop"
             - name: INIT_MEMORY
