@@ -31,19 +31,9 @@ spec:
       labels:
         app: stirling-pdf
     spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
       containers:
         - name: stirling-pdf
           image: frooodle/s-pdf:2.5.0
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
           env:
             - name: DOCKER_ENABLE_SECURITY
               value: "false"
