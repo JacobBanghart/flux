@@ -36,19 +36,19 @@ metadata:
 data:
   values.yaml: |
     gitlabUrl: https://gitlab.com
-    
+
     # Run 1 runner replica
     replicas: 1
-    
+
     # Reduce log verbosity
     logLevel: warn
-    
+
     # Only 2 concurrent jobs - more resources per job for faster Go builds
     concurrent: 2
-    
+
     runners:
       secret: gitlab-runner-secret
-      
+
       config: |
         [[runners]]
           name = "k3s-cluster-runner"
@@ -91,7 +91,7 @@ data:
           [runners.cache]
             Type = "local"
             Path = "/cache"
-    
+
     resources:
       limits:
         cpu: 200m
@@ -99,10 +99,10 @@ data:
       requests:
         cpu: 100m
         memory: 128Mi
-    
+
     rbac:
       create: true
-    
+
     serviceAccount:
       create: true
       name: gitlab-runner
