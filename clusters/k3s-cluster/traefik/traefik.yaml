@@ -56,14 +56,16 @@ spec:
 
     ports:
       web:
-        redirections:
-          entryPoint:
-            to: websecure
-            scheme: https
+        http:
+          redirections:
+            entryPoint:
+              to: websecure
+              scheme: https
       websecure:
-        tls:
-          enabled: true
-          certResolver: cloudflare
+        http:
+          tls:
+            enabled: true
+            certResolver: cloudflare
 
     persistence:
       enabled: true
