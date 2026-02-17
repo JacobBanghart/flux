@@ -109,7 +109,7 @@ spec:
         runAsGroup: 1000
       containers:
         - name: files
-          image: filebrowser/filebrowser:v2.31.2
+          image: filebrowser/filebrowser:v2.59.0
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsUser: 1000
