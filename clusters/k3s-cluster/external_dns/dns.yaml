@@ -36,6 +36,8 @@ spec:
       - service
     domainFilters:
       - jacobbanghart.com
+    policy: sync
+    txtOwnerId: external-dns
     extraArgs:
       - --cloudflare-dns-records-per-page=5000
       - --cloudflare-proxied=false
