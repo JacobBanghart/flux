@@ -41,3 +41,60 @@ spec:
     global:
       namespace: kasm
       hostname: kasm.jacobbanghart.com
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kasm-agent
+  namespace: kasm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kasm-agent
+  template:
+    metadata:
+      labels:
+        app: kasm-agent
+    spec:
+      containers:
+        - name: agent
+          image: kasmweb/agent:1.16.0
+          env:
+            - name: SERVER_HOSTNAME
+              value: "10.1.0.34"
+            - name: SERVER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: MANAGER_HOSTNAME
+              value: "kasm-agent-gateway"
+            - name: MANAGER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: kasm-secrets
+                  key: manager-token
+          ports:
+            - containerPort: 4432
+            - containerPort: 4444
+          volumeMounts:
+            - name: docker-sock
+              mountPath: /var/run/docker.sock
+      volumes:
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+            type: Socket
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kasm-agent-gateway
+  namespace: kasm
+spec:
+  ports:
+    - port: 443
+      targetPort: 8443
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: kasm-proxy
