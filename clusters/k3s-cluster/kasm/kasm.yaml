@@ -41,26 +41,3 @@ spec:
     global:
       namespace: kasm
       hostname: kasm.jacobbanghart.com
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: kasm-manager-ingress
-  namespace: kasm
-spec:
-  ingressClassName: traefik
-  tls:
-    - hosts:
-        - kasm.jacobbanghart.com
-      secretName: kasm-ingress-cert
-  rules:
-    - host: kasm.jacobbanghart.com
-      http:
-        paths:
-          - path: /manager_api/
-            pathType: Prefix
-            backend:
-              service:
-                name: kasm-manager
-                port:
-                  number: 8181
