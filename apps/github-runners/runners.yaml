@@ -21,8 +21,8 @@ spec:
           cpu: "4"
           memory: 6Gi
         requests:
-          cpu: "2"
-          memory: 2Gi
+          cpu: "100m"
+          memory: 128Mi
       # Ephemeral runners — each job gets a fresh runner pod
       ephemeral: true
 ---
@@ -64,8 +64,8 @@ spec:
           cpu: "2"
           memory: 2Gi
         requests:
-          cpu: 500m
-          memory: 512Mi
+          cpu: "50m"
+          memory: 64Mi
       ephemeral: true
 ---
 # HorizontalRunnerAutoscaler for simic-systems-home
