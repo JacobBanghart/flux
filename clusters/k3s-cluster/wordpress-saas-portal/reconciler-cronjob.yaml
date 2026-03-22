@@ -20,7 +20,7 @@ spec:
             - name: regcred
           containers:
             - name: reconciler
-              image: registry.gitlab.com/jacobmbanghart/wordpress-saas-portal/reconciler:20251215041249-4bb20026 # {"$imagepolicy": "flux-system:wordpress-saas-reconciler"}
+              image: registry.gitlab.com/jacobmbanghart/wordpress-saas-portal/reconciler:20260322041103-d6b6ab6f # {"$imagepolicy": "flux-system:wordpress-saas-reconciler"}
               imagePullPolicy: Always
               # Run with --dry-run=false to actually cancel orphans
               args: ["--dry-run=false"]
