@@ -1,20 +1,19 @@
 ---
-# Runner for wordpress-saas-portal
+# Shared runner for all jacobmbanghart repos
+# Docker enabled to support image builds (wordpress-saas-portal)
 apiVersion: actions.summerwind.dev/v1alpha1
 kind: RunnerDeployment
 metadata:
-  name: wordpress-saas-portal-runner
+  name: shared-runner
   namespace: actions-runner-system
 spec:
   replicas: 1
   template:
     spec:
-      # Scoped to this specific repo — does not grant access to other repos
-      repository: jacobmbanghart/wordpress-saas-portal
+      organization: jacobmbanghart
       labels:
         - self-hosted
         - linux
-      # Docker-in-Docker for image builds (build.yaml uses docker/build-push-action)
       dockerEnabled: true
       resources:
         limits:
@@ -23,64 +22,21 @@ spec:
         requests:
           cpu: "100m"
           memory: 128Mi
-      # Ephemeral runners — each job gets a fresh runner pod
       ephemeral: true
 ---
-# HorizontalRunnerAutoscaler for wordpress-saas-portal
-# Scales 1→4 based on queued/in-progress jobs; idles back to 1
+# Scales 1→8 based on queued/in-progress jobs across all repos
 apiVersion: actions.summerwind.dev/v1alpha1
 kind: HorizontalRunnerAutoscaler
 metadata:
-  name: wordpress-saas-portal-runner-autoscaler
+  name: shared-runner-autoscaler
   namespace: actions-runner-system
 spec:
   scaleTargetRef:
-    name: wordpress-saas-portal-runner
+    name: shared-runner
   minReplicas: 1
   maxReplicas: 8
   metrics:
     - type: TotalNumberOfQueuedAndInProgressWorkflowRuns
       repositoryNames:
         - jacobmbanghart/wordpress-saas-portal
----
-# Runner for simic-systems-home
-apiVersion: actions.summerwind.dev/v1alpha1
-kind: RunnerDeployment
-metadata:
-  name: simic-systems-home-runner
-  namespace: actions-runner-system
-spec:
-  replicas: 1
-  template:
-    spec:
-      repository: jacobmbanghart/simic-systems-home
-      labels:
-        - self-hosted
-        - linux
-      # No Docker needed — npm ci + astro check only
-      dockerEnabled: false
-      resources:
-        limits:
-          cpu: "4"
-          memory: 4Gi
-        requests:
-          cpu: "50m"
-          memory: 64Mi
-      ephemeral: true
----
-# HorizontalRunnerAutoscaler for simic-systems-home
-# Lightweight CI — scales 0→2, idles to 0 when no PRs
-apiVersion: actions.summerwind.dev/v1alpha1
-kind: HorizontalRunnerAutoscaler
-metadata:
-  name: simic-systems-home-runner-autoscaler
-  namespace: actions-runner-system
-spec:
-  scaleTargetRef:
-    name: simic-systems-home-runner
-  minReplicas: 0
-  maxReplicas: 8
-  metrics:
-    - type: TotalNumberOfQueuedAndInProgressWorkflowRuns
-      repositoryNames:
         - jacobmbanghart/simic-systems-home
