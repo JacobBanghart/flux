@@ -1,0 +1,86 @@
+---
+# Runner for wordpress-saas-portal
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: RunnerDeployment
+metadata:
+  name: wordpress-saas-portal-runner
+  namespace: actions-runner-system
+spec:
+  replicas: 1
+  template:
+    spec:
+      # Scoped to this specific repo — does not grant access to other repos
+      repository: jacobmbanghart/wordpress-saas-portal
+      labels:
+        - self-hosted
+        - linux
+      # Docker-in-Docker for image builds (build.yaml uses docker/build-push-action)
+      dockerEnabled: true
+      resources:
+        limits:
+          cpu: "4"
+          memory: 6Gi
+        requests:
+          cpu: "2"
+          memory: 2Gi
+      # Ephemeral runners — each job gets a fresh runner pod
+      ephemeral: true
+---
+# HorizontalRunnerAutoscaler for wordpress-saas-portal
+# Scales 1→4 based on queued/in-progress jobs; idles back to 1
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: HorizontalRunnerAutoscaler
+metadata:
+  name: wordpress-saas-portal-runner-autoscaler
+  namespace: actions-runner-system
+spec:
+  scaleTargetRef:
+    name: wordpress-saas-portal-runner
+  minReplicas: 1
+  maxReplicas: 4
+  metrics:
+    - type: TotalNumberOfQueuedAndInProgressWorkflowRuns
+      repositoryNames:
+        - jacobmbanghart/wordpress-saas-portal
+---
+# Runner for simic-systems-home
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: RunnerDeployment
+metadata:
+  name: simic-systems-home-runner
+  namespace: actions-runner-system
+spec:
+  replicas: 1
+  template:
+    spec:
+      repository: jacobmbanghart/simic-systems-home
+      labels:
+        - self-hosted
+        - linux
+      # No Docker needed — npm ci + astro check only
+      dockerEnabled: false
+      resources:
+        limits:
+          cpu: "2"
+          memory: 2Gi
+        requests:
+          cpu: 500m
+          memory: 512Mi
+      ephemeral: true
+---
+# HorizontalRunnerAutoscaler for simic-systems-home
+# Lightweight CI — scales 0→2, idles to 0 when no PRs
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: HorizontalRunnerAutoscaler
+metadata:
+  name: simic-systems-home-runner-autoscaler
+  namespace: actions-runner-system
+spec:
+  scaleTargetRef:
+    name: simic-systems-home-runner
+  minReplicas: 0
+  maxReplicas: 2
+  metrics:
+    - type: TotalNumberOfQueuedAndInProgressWorkflowRuns
+      repositoryNames:
+        - jacobmbanghart/simic-systems-home
