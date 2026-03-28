@@ -182,6 +182,18 @@ spec:
         limits:
           cpu: 500m
           memory: 512Mi
+
+    # Enable Prometheus annotation-based scraping so the otel-deployment pod
+    # picks up metrics from any pod annotated with:
+    #   prometheus.io/scrape: "true"
+    #   prometheus.io/port: "<port>"
+    # This covers Flux controllers (all annotated on port 8080) and any other
+    # workloads that already follow the standard prometheus.io annotation convention.
+    presets:
+      prometheus:
+        enabled: true
+        annotationsPrefix: prometheus.io
+        scrapeInterval: 60s
 ---
 # Ingress — Traefik Cloudflare ACME TLS (same pattern as all other services)
 apiVersion: networking.k8s.io/v1
