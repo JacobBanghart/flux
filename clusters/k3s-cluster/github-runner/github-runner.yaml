@@ -52,10 +52,9 @@ spec:
     # Cert manager is not deployed; use the built-in cert rotation
     certManagerEnabled: false
 
-    podAnnotations:
-      prometheus.io/scrape: "true"
-      prometheus.io/port: "8080"
-      prometheus.io/path: "/metrics"
+    # ARC metrics-addr binds to 127.0.0.1:8080 (loopback) — not scrapeable from otelDeployment.
+    # kube-rbac-proxy exposes metrics externally on 8443 (TLS+RBAC) which requires credentials.
+    # Skipping metrics scraping for ARC until --metrics-addr=0.0.0.0:8080 is configured.
 ---
 # This Kustomization depends on the HelmRelease above being Ready before
 # applying the CRD-dependent runner resources in ./runners/

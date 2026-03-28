@@ -31,9 +31,7 @@ spec:
       labels:
         app: stirling-pdf
       annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "9090"
-        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/scrape: "false"
     spec:
       containers:
         - name: stirling-pdf
@@ -45,14 +43,16 @@ spec:
               value: "false"
             - name: LANGS
               value: "en_US"
-            - name: METRICS_ENABLED
-              value: "true"
             - name: MANAGEMENT_SERVER_PORT
               value: "9090"
             - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
               value: "health,info,prometheus"
             - name: MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED
               value: "true"
+            # Fixed API key for internal Prometheus scraping by otelDeployment
+            # Not a secret — only used within the cluster, never exposed externally
+            - name: SECURITY_CUSTOMGLOBALAPIKEY
+              value: "signoz-scraper"
           resources:
             requests:
               cpu: "100m"
