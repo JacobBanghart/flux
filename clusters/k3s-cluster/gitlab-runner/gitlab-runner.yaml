@@ -37,12 +37,7 @@ data:
   values.yaml: |
     gitlabUrl: https://gitlab.com
 
-    podAnnotations:
-      prometheus.io/scrape: "true"
-      prometheus.io/port: "9252"
-      prometheus.io/path: "/metrics"
-
-    # Expose metrics listener on :9252
+    # Expose metrics listener on :9252; chart auto-adds prometheus.io annotations
     metrics:
       enabled: true
       serviceMonitor:
