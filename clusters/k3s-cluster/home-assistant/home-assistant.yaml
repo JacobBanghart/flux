@@ -21,6 +21,11 @@ data:
     script: !include scripts.yaml
     scene: !include scenes.yaml
 
+    # OpenTelemetry tracing → SigNoz
+    opentelemetry:
+      endpoint: k8s-infra-otel-agent.signoz.svc.cluster.local:4317
+      insecure: true
+
     # HTTP settings for reverse proxy
     http:
       use_x_forwarded_for: true
