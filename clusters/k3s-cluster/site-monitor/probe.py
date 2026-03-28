@@ -1,0 +1,349 @@
+#!/usr/bin/env python3
+"""
+site-monitor probe — emits OTLP metrics and logs to SigNoz.
+
+Checks per interval (default 60s):
+  1. Uptime / latency          (HTTP GET, measures response time, records status)
+  2. Content hash change       (SHA-256 of response body, logs on change)
+  3. DNS record change         (A/AAAA/CNAME, logs on change)
+  4. SSL cert monitoring       (days until expiry, logs on change)
+  5. Google PageSpeed          (performance score, CLS, LCP, FID via API)
+"""
+
+import hashlib
+import json
+import logging
+import os
+import socket
+import ssl
+import time
+from datetime import datetime, timezone
+
+import dns.resolver
+import requests
+from opentelemetry import metrics
+from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (
+    OTLPMetricExporter,
+)
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+from opentelemetry.sdk.resources import Resource
+
+# ---------------------------------------------------------------------------
+# Config from env
+# ---------------------------------------------------------------------------
+OTLP_ENDPOINT = os.environ.get("OTLP_ENDPOINT", "signoz-otel-collector.signoz.svc.cluster.local:4317")
+INTERVAL_SECONDS = int(os.environ.get("INTERVAL_SECONDS", "60"))
+TARGETS_JSON = os.environ.get(
+    "TARGETS",
+    '[{"name": "jacobbanghart.com", "url": "https://jacobbanghart.com", "host": "jacobbanghart.com"}]',
+)
+PAGESPEED_API_KEY = os.environ.get("PAGESPEED_API_KEY", "")
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
+
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL),
+    format="%(asctime)s %(levelname)s %(message)s",
+)
+log = logging.getLogger("site-monitor")
+
+# ---------------------------------------------------------------------------
+# OTLP setup
+# ---------------------------------------------------------------------------
+resource = Resource.create(
+    {
+        "service.name": "site-monitor",
+        "service.version": "1.0.0",
+        "deployment.environment": os.environ.get("DEPLOYMENT_ENVIRONMENT", "k3s-cluster"),
+    }
+)
+
+exporter = OTLPMetricExporter(
+    endpoint=OTLP_ENDPOINT,
+    insecure=True,
+)
+reader = PeriodicExportingMetricReader(exporter, export_interval_millis=INTERVAL_SECONDS * 1000)
+provider = MeterProvider(resource=resource, metric_readers=[reader])
+metrics.set_meter_provider(provider)
+meter = metrics.get_meter("site-monitor")
+
+# ---------------------------------------------------------------------------
+# Instruments
+# ---------------------------------------------------------------------------
+
+# Uptime / latency
+uptime_gauge = meter.create_gauge(
+    "site_monitor.up",
+    description="1 if the site returned HTTP 2xx/3xx, 0 otherwise",
+    unit="1",
+)
+latency_histogram = meter.create_histogram(
+    "site_monitor.latency_ms",
+    description="End-to-end HTTP response latency in milliseconds",
+    unit="ms",
+)
+http_status_gauge = meter.create_gauge(
+    "site_monitor.http_status",
+    description="Last HTTP status code returned by the site",
+    unit="1",
+)
+
+# Content hash
+content_changed_counter = meter.create_counter(
+    "site_monitor.content_changes_total",
+    description="Number of times the page content hash has changed",
+    unit="1",
+)
+
+# DNS
+dns_changed_counter = meter.create_counter(
+    "site_monitor.dns_changes_total",
+    description="Number of times the DNS records have changed",
+    unit="1",
+)
+dns_ttl_gauge = meter.create_gauge(
+    "site_monitor.dns_ttl_seconds",
+    description="Current TTL of the first DNS A record",
+    unit="s",
+)
+
+# SSL
+ssl_days_gauge = meter.create_gauge(
+    "site_monitor.ssl_days_remaining",
+    description="Days until SSL certificate expiry",
+    unit="d",
+)
+
+# PageSpeed
+pagespeed_score_gauge = meter.create_gauge(
+    "site_monitor.pagespeed_score",
+    description="Google PageSpeed performance score (0-100)",
+    unit="1",
+)
+pagespeed_lcp_gauge = meter.create_gauge(
+    "site_monitor.pagespeed_lcp_ms",
+    description="Largest Contentful Paint in milliseconds",
+    unit="ms",
+)
+pagespeed_cls_gauge = meter.create_gauge(
+    "site_monitor.pagespeed_cls",
+    description="Cumulative Layout Shift score",
+    unit="1",
+)
+pagespeed_fid_gauge = meter.create_gauge(
+    "site_monitor.pagespeed_fid_ms",
+    description="First Input Delay in milliseconds",
+    unit="ms",
+)
+
+# ---------------------------------------------------------------------------
+# State (in-memory; resets on pod restart — that's fine for change detection)
+# ---------------------------------------------------------------------------
+_state: dict[str, dict] = {}
+
+
+def state(target_name: str) -> dict:
+    if target_name not in _state:
+        _state[target_name] = {}
+    return _state[target_name]
+
+
+# ---------------------------------------------------------------------------
+# Check implementations
+# ---------------------------------------------------------------------------
+
+
+def check_uptime_latency(target: dict) -> dict:
+    """HTTP GET; measure latency; return status info."""
+    url = target["url"]
+    attrs = {"site": target["name"], "url": url}
+    try:
+        start = time.monotonic()
+        resp = requests.get(url, timeout=15, allow_redirects=True)
+        latency_ms = (time.monotonic() - start) * 1000
+
+        is_up = 1 if resp.status_code < 400 else 0
+        uptime_gauge.set(is_up, attrs)
+        latency_histogram.record(latency_ms, attrs)
+        http_status_gauge.set(resp.status_code, attrs)
+
+        log.debug("uptime %s status=%d latency=%.0fms", target["name"], resp.status_code, latency_ms)
+        return {"ok": True, "status": resp.status_code, "latency_ms": latency_ms, "body": resp.text}
+    except Exception as exc:
+        uptime_gauge.set(0, attrs)
+        log.warning("uptime check failed for %s: %s", target["name"], exc)
+        return {"ok": False, "error": str(exc)}
+
+
+def check_content_hash(target: dict, body: str) -> None:
+    """SHA-256 the response body; log and count if it changed."""
+    name = target["name"]
+    current_hash = hashlib.sha256(body.encode("utf-8", errors="replace")).hexdigest()
+    s = state(name)
+    previous_hash = s.get("content_hash")
+
+    if previous_hash is None:
+        log.info("content_hash initial for %s: %s", name, current_hash[:16])
+    elif previous_hash != current_hash:
+        log.warning(
+            "CONTENT CHANGED for %s | old=%s new=%s",
+            name,
+            previous_hash[:16],
+            current_hash[:16],
+        )
+        content_changed_counter.add(1, {"site": name})
+
+    s["content_hash"] = current_hash
+
+
+def check_dns(target: dict) -> None:
+    """Resolve A records; log and count if they changed."""
+    host = target["host"]
+    name = target["name"]
+    attrs = {"site": name, "host": host}
+    try:
+        answers = dns.resolver.resolve(host, "A")
+        records = sorted(str(r) for r in answers)
+        ttl = answers.ttl
+
+        dns_ttl_gauge.set(ttl, attrs)
+
+        s = state(name)
+        previous = s.get("dns_records")
+
+        if previous is None:
+            log.info("dns_records initial for %s: %s (ttl=%d)", name, records, ttl)
+        elif previous != records:
+            log.warning(
+                "DNS CHANGED for %s | old=%s new=%s",
+                name,
+                previous,
+                records,
+            )
+            dns_changed_counter.add(1, attrs)
+
+        s["dns_records"] = records
+    except Exception as exc:
+        log.warning("dns check failed for %s: %s", name, exc)
+
+
+def check_ssl(target: dict) -> None:
+    """Connect via TLS; measure days until cert expiry; log changes."""
+    host = target["host"]
+    name = target["name"]
+    attrs = {"site": name, "host": host}
+    try:
+        ctx = ssl.create_default_context()
+        with ctx.wrap_socket(socket.create_connection((host, 443), timeout=10), server_hostname=host) as sock:
+            cert = sock.getpeercert()
+
+        expiry_raw = cert.get("notAfter") if cert else None
+        if not expiry_raw:
+            raise ValueError("cert missing notAfter field")
+        expiry_str = str(expiry_raw)  # e.g. "Mar 29 12:00:00 2025 GMT"
+        expiry_dt = datetime.strptime(expiry_str, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=timezone.utc)
+        days_remaining = (expiry_dt - datetime.now(timezone.utc)).days
+
+        ssl_days_gauge.set(days_remaining, attrs)
+
+        s = state(name)
+        previous_expiry = s.get("ssl_expiry")
+        if previous_expiry is None:
+            log.info("ssl_expiry initial for %s: %s (%d days)", name, expiry_str, days_remaining)
+        elif previous_expiry != expiry_str:
+            log.warning(
+                "SSL CERT CHANGED for %s | old=%s new=%s (%d days remaining)",
+                name,
+                previous_expiry,
+                expiry_str,
+                days_remaining,
+            )
+        if days_remaining <= 14:
+            log.warning("SSL EXPIRY WARNING for %s: %d days remaining", name, days_remaining)
+
+        s["ssl_expiry"] = expiry_str
+    except Exception as exc:
+        ssl_days_gauge.set(-1, attrs)
+        log.warning("ssl check failed for %s: %s", name, exc)
+
+
+def check_pagespeed(target: dict) -> None:
+    """Call Google PageSpeed Insights API and emit core web vitals."""
+    if not PAGESPEED_API_KEY:
+        return
+    url = target["url"]
+    name = target["name"]
+    attrs = {"site": name, "url": url}
+    try:
+        api_url = (
+            f"https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
+            f"?url={url}&strategy=mobile&key={PAGESPEED_API_KEY}"
+        )
+        resp = requests.get(api_url, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+
+        cats = data.get("lighthouseResult", {}).get("categories", {})
+        score = int((cats.get("performance", {}).get("score") or 0) * 100)
+        pagespeed_score_gauge.set(score, attrs)
+
+        audits = data.get("lighthouseResult", {}).get("audits", {})
+
+        lcp = audits.get("largest-contentful-paint", {}).get("numericValue")
+        if lcp is not None:
+            pagespeed_lcp_gauge.set(lcp, attrs)
+
+        cls = audits.get("cumulative-layout-shift", {}).get("numericValue")
+        if cls is not None:
+            pagespeed_cls_gauge.set(cls, attrs)
+
+        fid = audits.get("max-potential-fid", {}).get("numericValue")
+        if fid is not None:
+            pagespeed_fid_gauge.set(fid, attrs)
+
+        log.info("pagespeed %s score=%d lcp=%.0fms", name, score, lcp or 0)
+    except Exception as exc:
+        log.warning("pagespeed check failed for %s: %s", name, exc)
+
+
+# ---------------------------------------------------------------------------
+# Main loop
+# ---------------------------------------------------------------------------
+
+
+def run_checks(target: dict) -> None:
+    log.debug("running checks for %s", target["name"])
+    result = check_uptime_latency(target)
+    if result["ok"]:
+        check_content_hash(target, result.get("body", ""))
+    check_dns(target)
+    check_ssl(target)
+    check_pagespeed(target)
+
+
+def main() -> None:
+    targets = json.loads(TARGETS_JSON)
+    log.info(
+        "site-monitor starting | targets=%d interval=%ds otlp=%s",
+        len(targets),
+        INTERVAL_SECONDS,
+        OTLP_ENDPOINT,
+    )
+    # Stagger first run so all checks don't fire simultaneously on startup
+    time.sleep(5)
+
+    while True:
+        start = time.monotonic()
+        for target in targets:
+            try:
+                run_checks(target)
+            except Exception as exc:
+                log.error("unhandled error for %s: %s", target.get("name"), exc)
+        elapsed = time.monotonic() - start
+        sleep_for = max(0, INTERVAL_SECONDS - elapsed)
+        log.debug("cycle done in %.1fs, sleeping %.1fs", elapsed, sleep_for)
+        time.sleep(sleep_for)
+
+
+if __name__ == "__main__":
+    main()
