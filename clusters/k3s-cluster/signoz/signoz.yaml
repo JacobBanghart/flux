@@ -126,6 +126,12 @@ metadata:
   namespace: signoz
 spec:
   interval: 10m
+  # Wait for the signoz core release (collector) to be ready before deploying
+  # the otel-agent. Prevents a startup race where the agent fills its send
+  # queue before the collector is listening, causing a permanent stuck state.
+  dependsOn:
+    - name: signoz
+      namespace: signoz
   chart:
     spec:
       chart: k8s-infra
@@ -154,6 +160,18 @@ spec:
         limits:
           cpu: 500m
           memory: 512Mi
+      config:
+        exporters:
+          otlp:
+            # Large queue gives the agent enough buffer to survive a slow
+            # collector startup without dropping data or getting stuck.
+            sending_queue:
+              queue_size: 10000
+            retry_on_failure:
+              enabled: true
+              initial_interval: 5s
+              max_interval: 30s
+              max_elapsed_time: 300s
 
     otelDeployment:
       enabled: true
