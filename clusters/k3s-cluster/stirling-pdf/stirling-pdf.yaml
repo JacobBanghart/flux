@@ -32,7 +32,7 @@ spec:
         app: stirling-pdf
       annotations:
         prometheus.io/scrape: "true"
-        prometheus.io/port: "8080"
+        prometheus.io/port: "9090"
         prometheus.io/path: "/actuator/prometheus"
     spec:
       containers:
@@ -47,13 +47,12 @@ spec:
               value: "en_US"
             - name: METRICS_ENABLED
               value: "true"
+            - name: MANAGEMENT_SERVER_PORT
+              value: "9090"
             - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
               value: "health,info,prometheus"
             - name: MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED
               value: "true"
-            # Stirling-PDF Spring Security: permit actuator endpoints without auth
-            - name: SECURITY_ENABLELOGIN
-              value: "false"
           resources:
             requests:
               cpu: "100m"
@@ -63,6 +62,9 @@ spec:
               cpu: "2000m"
           ports:
             - containerPort: 8080
+              name: http
+            - containerPort: 9090
+              name: management
           livenessProbe:
             httpGet:
               path: /api/v1/info/status

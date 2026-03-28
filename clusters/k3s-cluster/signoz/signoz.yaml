@@ -182,18 +182,6 @@ spec:
         limits:
           cpu: 500m
           memory: 512Mi
-      config:
-        receivers:
-          prometheus/vaultwarden:
-            config:
-              scrape_configs:
-                - job_name: vaultwarden
-                  scrape_interval: 60s
-                  bearer_token: signoz-scraper
-                  static_configs:
-                    - targets:
-                        - vaultwarden.vaultwarden.svc.cluster.local:9000
-
     # Enable Prometheus annotation-based scraping so the otel-deployment pod
     # picks up metrics from any pod annotated with:
     #   prometheus.io/scrape: "true"
