@@ -98,10 +98,17 @@ spec:
       - "--metrics.otlp.grpc.insecure=true"
       - "--metrics.otlp.grpc.endpoint=signoz-otel-collector.signoz.svc.cluster.local:4317"
       # SigNoz OTLP — traces
+      - "--tracing.serviceName=traefik"
       - "--tracing.otlp=true"
       - "--tracing.otlp.grpc=true"
       - "--tracing.otlp.grpc.insecure=true"
       - "--tracing.otlp.grpc.endpoint=signoz-otel-collector.signoz.svc.cluster.local:4317"
+
+    # Disable Prometheus metrics — OTLP is the sole metrics exporter.
+    # Traefik v3 only sends to one metrics backend; Prometheus takes priority
+    # and silently suppresses OTLP if both are enabled.
+    metrics:
+      prometheus: null
 
     deployment:
       initContainers:
