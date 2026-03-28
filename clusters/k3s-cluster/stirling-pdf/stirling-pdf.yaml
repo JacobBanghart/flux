@@ -47,6 +47,12 @@ spec:
               value: "en_US"
             - name: METRICS_ENABLED
               value: "true"
+            - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+              value: "health,info,prometheus"
+            - name: MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED
+              value: "true"
+            - name: MANAGEMENT_SECURITY_ENABLED
+              value: "false"
           resources:
             requests:
               cpu: "100m"

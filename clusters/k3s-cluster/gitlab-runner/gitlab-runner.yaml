@@ -42,6 +42,12 @@ data:
       prometheus.io/port: "9252"
       prometheus.io/path: "/metrics"
 
+    # Expose metrics listener on :9252
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: false
+
     # Run 1 runner replica
     replicas: 1
 
