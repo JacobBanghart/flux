@@ -31,9 +31,8 @@ spec:
       labels:
         app: stirling-pdf
       annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "9090"
-        prometheus.io/path: "/actuator/prometheus"
+        # Scraped via presets.prometheus.scrapeConfigs in signoz/signoz.yaml (requires X-API-KEY header)
+        prometheus.io/scrape: "false"
     spec:
       containers:
         - name: stirling-pdf
