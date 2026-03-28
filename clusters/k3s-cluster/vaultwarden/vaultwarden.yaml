@@ -45,6 +45,10 @@ spec:
     metadata:
       labels:
         app: vaultwarden
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9000"
+        prometheus.io/path: "/metrics"
     spec:
       containers:
         - name: vaultwarden
@@ -52,6 +56,8 @@ spec:
           ports:
             - containerPort: 80
               name: http
+            - containerPort: 9000
+              name: metrics
           env:
             - name: DOMAIN
               value: "https://passwords.jacobbanghart.com"
@@ -61,6 +67,11 @@ spec:
               value: "true"
             - name: SHOW_PASSWORD_HINT
               value: "false"
+            - name: METRICS_ENABLED
+              value: "true"
+            # Empty token disables bearer auth on /metrics (acceptable for internal cluster scraping)
+            - name: METRICS_TOKEN
+              value: ""
             - name: ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:

@@ -40,6 +40,10 @@ spec:
     txtOwnerId: external-dns
     extraArgs:
       - --cloudflare-dns-records-per-page=5000
+    podAnnotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "7979"
+      prometheus.io/path: "/metrics"
     env:
       - name: CF_API_KEY
         valueFrom:

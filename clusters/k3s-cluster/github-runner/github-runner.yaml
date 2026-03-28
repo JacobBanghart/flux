@@ -51,6 +51,11 @@ spec:
 
     # Cert manager is not deployed; use the built-in cert rotation
     certManagerEnabled: false
+
+    podAnnotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "8080"
+      prometheus.io/path: "/metrics"
 ---
 # This Kustomization depends on the HelmRelease above being Ready before
 # applying the CRD-dependent runner resources in ./runners/

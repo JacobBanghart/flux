@@ -37,6 +37,11 @@ data:
   values.yaml: |
     gitlabUrl: https://gitlab.com
 
+    podAnnotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "9252"
+      prometheus.io/path: "/metrics"
+
     # Run 1 runner replica
     replicas: 1
 

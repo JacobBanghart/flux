@@ -30,6 +30,10 @@ spec:
     metadata:
       labels:
         app: stirling-pdf
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/actuator/prometheus"
     spec:
       containers:
         - name: stirling-pdf
@@ -41,6 +45,8 @@ spec:
               value: "false"
             - name: LANGS
               value: "en_US"
+            - name: METRICS_ENABLED
+              value: "true"
           resources:
             requests:
               cpu: "100m"
