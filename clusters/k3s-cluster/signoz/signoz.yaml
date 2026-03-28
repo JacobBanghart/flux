@@ -1,0 +1,185 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: signoz
+---
+# ClickHouse data — 50Gi on nfs-rwx (keeps data off the VM root disk)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: signoz-clickhouse-pvc
+  namespace: signoz
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: nfs-rwx
+---
+# SigNoz metadata — SQLite DB for alerts, dashboards, users
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: signoz-metadata-pvc
+  namespace: signoz
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: nfs-rwx
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: signoz
+  namespace: signoz
+spec:
+  interval: 1h
+  url: https://charts.signoz.io
+---
+# SigNoz core: backend + UI + otel-collector + ClickHouse + ZooKeeper
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: signoz
+  namespace: signoz
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: signoz
+      version: "0.116.2"
+      sourceRef:
+        kind: HelmRepository
+        name: signoz
+      interval: 10m
+  install:
+    crds: CreateReplace
+    remediation:
+      retries: 3
+  upgrade:
+    crds: CreateReplace
+    remediation:
+      retries: 3
+  values:
+    clickhouse:
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1Gi
+        limits:
+          cpu: 4000m
+          memory: 8Gi
+      persistence:
+        enabled: true
+        existingClaim: signoz-clickhouse-pvc
+
+    queryService:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 1000m
+          memory: 1Gi
+
+    frontend:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+
+    otelCollector:
+      resources:
+        requests:
+          cpu: 200m
+          memory: 256Mi
+        limits:
+          cpu: 1000m
+          memory: 2Gi
+
+    zookeeper:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
+    userdata:
+      persistence:
+        enabled: true
+        existingClaim: signoz-metadata-pvc
+---
+# k8s-infra: DaemonSet (per-node) + Deployment (cluster-level) collectors
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: k8s-infra
+  namespace: signoz
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: k8s-infra
+      sourceRef:
+        kind: HelmRepository
+        name: signoz
+      interval: 10m
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    global:
+      deploymentEnvironment: k3s-cluster
+
+    otelCollectorEndpoint: signoz-otel-collector.signoz.svc.cluster.local:4317
+
+    otelAgent:
+      enabled: true
+      resources:
+        requests:
+          cpu: 200m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
+    otelDeployment:
+      enabled: true
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+---
+# Ingress — Traefik Cloudflare ACME TLS (same pattern as all other services)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: signoz-ingress
+  namespace: signoz
+spec:
+  rules:
+    - host: signoz.jacobbanghart.com
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: signoz-frontend
+                port:
+                  number: 3301

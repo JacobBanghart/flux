@@ -92,6 +92,16 @@ spec:
       - "--certificatesresolvers.cloudflare.acme.email=jacobmbanghart@gmail.com"
       - "--certificatesresolvers.cloudflare.acme.dnschallenge.resolvers=1.1.1.1"
       - "--certificatesresolvers.cloudflare.acme.storage=/ssl-certs/acme-cloudflare.json"
+      # SigNoz OTLP — metrics
+      - "--metrics.otlp=true"
+      - "--metrics.otlp.grpc=true"
+      - "--metrics.otlp.grpc.insecure=true"
+      - "--metrics.otlp.grpc.endpoint=signoz-otel-collector.signoz.svc.cluster.local:4317"
+      # SigNoz OTLP — traces
+      - "--tracing.otlp=true"
+      - "--tracing.otlp.grpc=true"
+      - "--tracing.otlp.grpc.insecure=true"
+      - "--tracing.otlp.grpc.endpoint=signoz-otel-collector.signoz.svc.cluster.local:4317"
 
     deployment:
       initContainers:
