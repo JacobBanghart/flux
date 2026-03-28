@@ -31,7 +31,9 @@ spec:
       labels:
         app: stirling-pdf
       annotations:
-        prometheus.io/scrape: "false"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/actuator/prometheus"
     spec:
       containers:
         - name: stirling-pdf
@@ -49,10 +51,13 @@ spec:
               value: "health,info,prometheus"
             - name: MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED
               value: "true"
-            # Fixed API key for internal Prometheus scraping by otelDeployment
-            # Not a secret — only used within the cluster, never exposed externally
             - name: SECURITY_CUSTOMGLOBALAPIKEY
               value: "signoz-scraper"
+            # Disable Spring Security auto-configuration so the management port
+            # (9090) and actuator endpoints are accessible without authentication.
+            # Stirling-PDF is cluster-internal; ingress is TLS-terminated by Traefik.
+            - name: SPRING_AUTOCONFIGURE_EXCLUDE
+              value: "org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration,org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration"
           resources:
             requests:
               cpu: "100m"

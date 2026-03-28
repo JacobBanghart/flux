@@ -182,20 +182,6 @@ spec:
         limits:
           cpu: 500m
           memory: 512Mi
-      config:
-        receivers:
-          # Stirling-PDF: actuator on management port 9090, protected by custom API key header
-          prometheus/stirling-pdf:
-            config:
-              scrape_configs:
-                - job_name: stirling-pdf
-                  scrape_interval: 60s
-                  metrics_path: /actuator/prometheus
-                  static_configs:
-                    - targets:
-                        - stirling-pdf.stirling-pdf.svc.cluster.local:9090
-                  headers:
-                    X-API-KEY: signoz-scraper
     # Enable Prometheus annotation-based scraping so the otel-deployment pod
     # picks up metrics from any pod annotated with:
     #   prometheus.io/scrape: "true"
