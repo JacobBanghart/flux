@@ -193,11 +193,6 @@ spec:
                   static_configs:
                     - targets:
                         - vaultwarden.vaultwarden.svc.cluster.local:9000
-        service:
-          pipelines:
-            metrics:
-              receivers:
-                - prometheus/vaultwarden
 
     # Enable Prometheus annotation-based scraping so the otel-deployment pod
     # picks up metrics from any pod annotated with:
