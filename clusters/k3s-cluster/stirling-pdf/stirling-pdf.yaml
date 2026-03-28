@@ -51,7 +51,8 @@ spec:
               value: "health,info,prometheus"
             - name: MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED
               value: "true"
-            - name: MANAGEMENT_SECURITY_ENABLED
+            # Stirling-PDF Spring Security: permit actuator endpoints without auth
+            - name: SECURITY_ENABLELOGIN
               value: "false"
           resources:
             requests:
