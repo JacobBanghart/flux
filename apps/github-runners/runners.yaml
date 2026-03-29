@@ -38,5 +38,6 @@ spec:
   metrics:
     - type: TotalNumberOfQueuedAndInProgressWorkflowRuns
       repositoryNames:
-        - jacobmbanghart/wordpress-saas-portal
-        - jacobmbanghart/simic-systems-home
+        - wordpress-saas-portal
+        - simic-systems-home
+        - BackToSafety
