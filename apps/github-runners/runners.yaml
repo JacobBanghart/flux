@@ -1,6 +1,6 @@
 ---
-# Shared runner for all jacobmbanghart repos
-# Docker enabled to support image builds (wordpress-saas-portal)
+# Shared runner for BackToSafety repository
+# Docker enabled to support image builds
 apiVersion: actions.summerwind.dev/v1alpha1
 kind: RunnerDeployment
 metadata:
@@ -10,7 +10,7 @@ spec:
   replicas: 1
   template:
     spec:
-      organization: jacobmbanghart
+      repository: JacobBanghart/BackToSafety
       labels:
         - self-hosted
         - linux
@@ -24,7 +24,7 @@ spec:
           memory: 128Mi
       ephemeral: true
 ---
-# Scales 1→8 based on queued/in-progress jobs across all repos
+# Scales 1→8 based on queued/in-progress jobs for BackToSafety
 apiVersion: actions.summerwind.dev/v1alpha1
 kind: HorizontalRunnerAutoscaler
 metadata:
@@ -38,6 +38,4 @@ spec:
   metrics:
     - type: TotalNumberOfQueuedAndInProgressWorkflowRuns
       repositoryNames:
-        - wordpress-saas-portal
-        - simic-systems-home
-        - BackToSafety
+        - JacobBanghart/BackToSafety
