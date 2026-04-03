@@ -131,3 +131,48 @@ spec:
               pvc:
                 namespace: cdi
                 name: ubuntu-2404
+
+---
+# HorizontalPodAutoscaler — scales the ubuntu-pool VirtualMachinePool
+# based on average CPU utilization across all running VM pods.
+#
+# Scaling behaviour:
+#   - Scale up:   when avg CPU > 60% — adds VMs quickly (60s window)
+#   - Scale down: conservatively, waits 5 minutes of low CPU before removing VMs
+#     to avoid flapping (VMs take time to start and are expensive to churn)
+#
+# kubevirt-manager shows this HPA on the VM Pools page when labeled correctly.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ubuntu-pool
+  namespace: vm-pool-ubuntu
+  labels:
+    kubevirt-manager.io/managed: "true"
+spec:
+  scaleTargetRef:
+    apiVersion: pool.kubevirt.io/v1alpha1
+    kind: VirtualMachinePool
+    name: ubuntu-pool
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
