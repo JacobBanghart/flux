@@ -43,6 +43,7 @@ metadata:
   namespace: vm-pool-ubuntu
   labels:
     kubevirt-manager.io/managed: "true"
+    kubevirt.io/vmpool: ubuntu-pool
 spec:
   replicas: 3
   selector:
