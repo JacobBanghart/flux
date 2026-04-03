@@ -1,4 +1,36 @@
 ---
+# Traefik Middleware — basic auth
+# Secret 'kubevirt-manager-basic-auth' must be created manually (repo is public):
+#
+#   PASSWORD_HASH=$(openssl passwd -apr1 'your-password-here')
+#   kubectl create secret generic kubevirt-manager-basic-auth \
+#     --from-literal=users="your-username:${PASSWORD_HASH}" \
+#     --namespace kubevirt-manager
+#
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: basic-auth
+  namespace: kubevirt-manager
+spec:
+  basicAuth:
+    secret: kubevirt-manager-basic-auth
+    removeHeader: true
+
+---
+# Traefik Middleware — chain: auth first, then WebSocket headers for noVNC console
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: auth-and-websocket
+  namespace: kubevirt-manager
+spec:
+  chain:
+    middlewares:
+      - name: basic-auth
+      - name: websocket-headers
+
+---
 # Traefik Middleware — pass WebSocket upgrade headers through to noVNC console
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
@@ -17,8 +49,8 @@ metadata:
   name: kubevirt-manager
   namespace: kubevirt-manager
   annotations:
-    # Enable WebSocket middleware for noVNC console support
-    traefik.ingress.kubernetes.io/router.middlewares: kubevirt-manager-websocket-headers@kubernetescrd
+    # Chain: basic auth + WebSocket headers (required for noVNC console)
+    traefik.ingress.kubernetes.io/router.middlewares: kubevirt-manager-auth-and-websocket@kubernetescrd
 spec:
   rules:
     - host: kubevirt.jacobbanghart.com
