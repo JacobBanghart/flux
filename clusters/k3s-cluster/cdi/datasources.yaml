@@ -1,0 +1,63 @@
+---
+# Ubuntu 24.04 LTS (Noble Numbat) — cloud image
+# CDI will import this into a PVC; kubevirt-manager shows it as a boot source
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: DataVolume
+metadata:
+  name: ubuntu-2404
+  namespace: cdi
+  labels:
+    kubevirt.io/os: ubuntu
+spec:
+  source:
+    http:
+      url: https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img
+  pvc:
+    accessModes:
+      - ReadWriteMany
+    storageClassName: nfs-rwx
+    resources:
+      requests:
+        storage: 10Gi
+
+---
+# Debian 12 (Bookworm) — cloud image
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: DataVolume
+metadata:
+  name: debian-12
+  namespace: cdi
+  labels:
+    kubevirt.io/os: debian
+spec:
+  source:
+    http:
+      url: https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2
+  pvc:
+    accessModes:
+      - ReadWriteMany
+    storageClassName: nfs-rwx
+    resources:
+      requests:
+        storage: 10Gi
+
+---
+# Fedora 41 — cloud image
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: DataVolume
+metadata:
+  name: fedora-41
+  namespace: cdi
+  labels:
+    kubevirt.io/os: fedora
+spec:
+  source:
+    http:
+      url: https://download.fedoraproject.org/pub/fedora/linux/releases/41/Cloud/x86_64/images/Fedora-Cloud-Base-Generic-41-1.4.x86_64.qcow2
+  pvc:
+    accessModes:
+      - ReadWriteMany
+    storageClassName: nfs-rwx
+    resources:
+      requests:
+        storage: 10Gi

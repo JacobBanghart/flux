@@ -6,3 +6,8 @@ resources:
   - https://github.com/kubevirt/kubevirt/releases/download/v1.8.1/kubevirt-operator.yaml
   # KubeVirt CR — triggers the operator to deploy all virt-* components
   - kubevirt-cr.yaml
+  # Common instance types and preferences (u1.micro → u1.2xlarge, cx1.*, gn1.*, n1.*)
+  # and OS preferences (fedora, ubuntu, debian, windows, etc.)
+  # https://github.com/kubevirt/common-instancetypes/releases/tag/v1.6.0
+  - https://github.com/kubevirt/common-instancetypes/releases/download/v1.6.0/common-clusterinstancetypes-bundle-v1.6.0.yaml
+  - https://github.com/kubevirt/common-instancetypes/releases/download/v1.6.0/common-clusterpreferences-bundle-v1.6.0.yaml

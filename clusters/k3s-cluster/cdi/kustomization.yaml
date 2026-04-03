@@ -6,3 +6,5 @@ resources:
   - https://github.com/kubevirt/containerized-data-importer/releases/download/v1.65.0/cdi-operator.yaml
   # CDI CR — triggers the operator to deploy all CDI components (importer, uploader, proxy)
   - cdi-cr.yaml
+  # Pre-pulled OS cloud images available as boot sources in kubevirt-manager
+  - datasources.yaml
