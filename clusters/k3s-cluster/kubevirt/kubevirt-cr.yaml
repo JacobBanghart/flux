@@ -1,0 +1,29 @@
+---
+# KubeVirt CR — instructs virt-operator to deploy all KubeVirt components
+# https://kubevirt.io/user-guide/cluster_admin/installation/
+#
+# Hardware acceleration confirmed: /dev/kvm present, AMD SVM (220 threads)
+# No emulation fallback needed — useEmulation is false (default).
+#
+# Feature gates enabled:
+#   - LiveMigration    : live-migrate VMs between nodes without downtime
+#   - Snapshot         : VM snapshots via VolumeSnapshot API
+#   - HotplugVolumes   : attach/detach PVC volumes to running VMs
+apiVersion: kubevirt.io/v1
+kind: KubeVirt
+metadata:
+  name: kubevirt
+  namespace: kubevirt
+spec:
+  certificateRotateStrategy: {}
+  configuration:
+    developerConfiguration:
+      featureGates:
+        - LiveMigration
+        - Snapshot
+        - HotplugVolumes
+  customizeComponents: {}
+  imagePullPolicy: IfNotPresent
+  workloadUpdateStrategy:
+    workloadUpdateMethods:
+      - LiveMigrate

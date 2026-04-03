@@ -1,0 +1,21 @@
+---
+# CDI (Containerized Data Importer) CR
+# https://github.com/kubevirt/containerized-data-importer
+#
+# CDI provides DataVolume support for KubeVirt, enabling:
+#   - Import VM images from HTTP/S3/registry sources into PVCs
+#   - Clone PVCs between namespaces
+#   - Upload local disk images via virtctl
+#
+# Storage: DataVolumes will use nfs-rwx StorageClass (dynamic provisioning via TrueNAS)
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: CDI
+metadata:
+  name: cdi
+  namespace: cdi
+spec:
+  config:
+    # Use the cluster's dynamic NFS storage class for all imported DataVolumes
+    scratchSpaceStorageClass: nfs-rwx
+    podResourceRequirements: {}
+  imagePullPolicy: IfNotPresent

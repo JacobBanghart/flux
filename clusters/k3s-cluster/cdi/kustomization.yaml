@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # CDI operator — installs CRDs and the cdi-operator Deployment
+  - https://github.com/kubevirt/containerized-data-importer/releases/download/v1.65.0/cdi-operator.yaml
+  # CDI CR — triggers the operator to deploy all CDI components (importer, uploader, proxy)
+  - cdi-cr.yaml
