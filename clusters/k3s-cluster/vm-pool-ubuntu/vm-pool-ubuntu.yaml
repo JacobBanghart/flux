@@ -5,6 +5,24 @@ metadata:
   name: vm-pool-ubuntu
 
 ---
+# CDI requires a RoleBinding in the SOURCE namespace (cdi) granting the
+# requesting ServiceAccount permission to clone DataVolumes across namespaces.
+# Without this, VMs get UnauthorizedDataVolumeCreate warnings and never start.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: vm-pool-ubuntu-cdi-clone
+  namespace: cdi
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: vm-pool-ubuntu
+roleRef:
+  kind: ClusterRole
+  name: edit
+  apiGroup: rbac.authorization.k8s.io
+
+---
 # VirtualMachinePool — maintains 3 identical Ubuntu 24.04 VMs
 # Each VM gets its own PVC cloned from the shared ubuntu-2404 DataVolume in the cdi namespace.
 #
