@@ -41,6 +41,8 @@ kind: VirtualMachinePool
 metadata:
   name: ubuntu-pool
   namespace: vm-pool-ubuntu
+  labels:
+    kubevirt-manager.io/managed: "true"
 spec:
   replicas: 3
   selector:
@@ -51,6 +53,7 @@ spec:
     metadata:
       labels:
         kubevirt.io/vmpool: ubuntu-pool
+        kubevirt-manager.io/managed: "true"
 
     spec:
       # Use the community instance type + preference instead of inlining CPU/memory
