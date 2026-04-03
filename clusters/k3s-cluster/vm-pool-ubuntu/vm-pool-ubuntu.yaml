@@ -101,7 +101,6 @@ spec:
                 userData: |
                   #cloud-config
                   hostname: ubuntu-pool
-                  package_update: true
                   packages:
                     - qemu-guest-agent
                   runcmd:
