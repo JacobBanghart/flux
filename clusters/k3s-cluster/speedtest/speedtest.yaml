@@ -22,7 +22,8 @@ metadata:
   name: speedtest
   namespace: speedtest
 spec:
-  replicas: 2
+  replicas: 1
+  revisionHistoryLimit: 2
   selector:
     matchLabels:
       app: speedtest

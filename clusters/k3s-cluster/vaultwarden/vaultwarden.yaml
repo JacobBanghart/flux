@@ -38,6 +38,7 @@ metadata:
   namespace: vaultwarden
 spec:
   replicas: 1
+  revisionHistoryLimit: 2
   selector:
     matchLabels:
       app: vaultwarden

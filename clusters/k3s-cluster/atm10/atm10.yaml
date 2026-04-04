@@ -23,6 +23,7 @@ metadata:
   namespace: atm10
 spec:
   replicas: 0
+  revisionHistoryLimit: 2
   strategy:
     type: Recreate
   selector:

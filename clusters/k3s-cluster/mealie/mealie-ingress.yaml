@@ -38,6 +38,7 @@ metadata:
   name: mealie
   namespace: mealie
 spec:
+  revisionHistoryLimit: 2
   selector:
     matchLabels:
       app: mealie

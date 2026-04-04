@@ -96,6 +96,7 @@ metadata:
   name: jellyfin
   namespace: jellyfin
 spec:
+  revisionHistoryLimit: 2
   selector:
     matchLabels:
       app: jellyfin
