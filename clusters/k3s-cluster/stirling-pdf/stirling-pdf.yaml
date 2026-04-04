@@ -16,9 +16,6 @@ spec:
     - port: 8080
       targetPort: 8080
       name: http
-    - port: 9090
-      targetPort: 9090
-      name: management
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -34,9 +31,6 @@ spec:
     metadata:
       labels:
         app: stirling-pdf
-      annotations:
-        # Scraped via presets.prometheus.scrapeConfigs in signoz/signoz.yaml (requires X-API-KEY header)
-        prometheus.io/scrape: "false"
     spec:
       containers:
         - name: stirling-pdf
@@ -48,19 +42,6 @@ spec:
               value: "false"
             - name: LANGS
               value: "en_US"
-            - name: MANAGEMENT_SERVER_PORT
-              value: "9090"
-            - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
-              value: "health,info,prometheus"
-            - name: MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED
-              value: "true"
-            - name: SECURITY_CUSTOMGLOBALAPIKEY
-              value: "signoz-scraper"
-            # Disable Spring Security auto-configuration so the management port
-            # (9090) and actuator endpoints are accessible without authentication.
-            # Stirling-PDF is cluster-internal; ingress is TLS-terminated by Traefik.
-            - name: SPRING_AUTOCONFIGURE_EXCLUDE
-              value: "org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration,org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration"
           resources:
             requests:
               cpu: "100m"
@@ -71,8 +52,6 @@ spec:
           ports:
             - containerPort: 8080
               name: http
-            - containerPort: 9090
-              name: management
           livenessProbe:
             httpGet:
               path: /api/v1/info/status

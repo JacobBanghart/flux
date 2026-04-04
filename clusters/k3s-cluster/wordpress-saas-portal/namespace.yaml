@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: wordpress-saas-portal
-  labels:
-    app.kubernetes.io/name: wordpress-saas-portal
-    app.kubernetes.io/part-of: wordpress-saas
