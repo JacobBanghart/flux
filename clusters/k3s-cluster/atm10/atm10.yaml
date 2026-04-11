@@ -22,7 +22,7 @@ metadata:
   name: atm10
   namespace: atm10
 spec:
-  replicas: 0
+  replicas: 1
   revisionHistoryLimit: 2
   strategy:
     type: Recreate
@@ -45,8 +45,8 @@ spec:
               cpu: "4"
               memory: "12Gi"
             limits:
-              cpu: "12"
-              memory: "24Gi"
+              cpu: "64"
+              memory: "64Gi"
           ports:
             - containerPort: 25565
               protocol: TCP
@@ -63,7 +63,7 @@ spec:
             - name: CF_PAGE_URL
               value: "https://www.curseforge.com/minecraft/modpacks/all-the-mods-10"
             - name: CF_FILENAME_MATCHER
-              value: "5.4"
+              value: "6.6"
             - name: MODE
               value: "survival"
             - name: ALLOW_FLIGHT
@@ -73,9 +73,9 @@ spec:
             - name: INIT_MEMORY
               value: "12G"
             - name: MAX_MEMORY
-              value: "20G"
+              value: "64G"
             - name: JVM_XX_OPTS
-              value: "-XX:ParallelGCThreads=10 -XX:ConcGCThreads=5"
+              value: "-XX:ActiveProcessorCount=64 -XX:ParallelGCThreads=43 -XX:ConcGCThreads=11"
             - name: USE_AIKAR_FLAGS
               value: "true"
           volumeMounts:
