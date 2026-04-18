@@ -46,7 +46,7 @@ spec:
               memory: "12Gi"
             limits:
               cpu: "12"
-              memory: "12Gi"
+              memory: "14Gi"
           ports:
             - containerPort: 25565
               protocol: TCP
@@ -70,18 +70,28 @@ spec:
               value: "TRUE"
             - name: OPS
               value: "Jqwop"
-            - name: MEMORY
-              value: ""
+            - name: INIT_MEMORY
+              value: "12288M"
+            - name: MAX_MEMORY
+              value: "12288M"
             - name: USE_AIKAR_FLAGS
               value: "false"
+            - name: JVM_XX_OPTS
+              value: "-XX:+EnableDynamicAgentLoading -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -XX:G1NewSizePercent=30 -XX:G1MaxNewSizePercent=40 -XX:G1HeapRegionSize=32M -XX:G1ReservePercent=20 -XX:G1HeapWastePercent=5 -XX:G1MixedGCCountTarget=4 -XX:InitiatingHeapOccupancyPercent=15 -XX:G1MixedGCLiveThresholdPercent=90 -XX:G1RSetUpdatingPauseTimePercent=5 -XX:SurvivorRatio=32 -XX:+PerfDisableSharedMem -XX:MaxTenuringThreshold=1"
             - name: JVM_OPTS
-              value: "-Xms12288M -Xmx12288M -XX:+EnableDynamicAgentLoading -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -XX:G1NewSizePercent=30 -XX:G1MaxNewSizePercent=40 -XX:G1HeapRegionSize=32M -XX:G1ReservePercent=20 -XX:G1HeapWastePercent=5 -XX:G1MixedGCCountTarget=4 -XX:InitiatingHeapOccupancyPercent=15 -XX:G1MixedGCLiveThresholdPercent=90 -XX:G1RSetUpdatingPauseTimePercent=5 -XX:SurvivorRatio=32 -XX:+PerfDisableSharedMem -XX:MaxTenuringThreshold=1 -Dterminal.jline=false -Dterminal.ansi=true"
+              value: "-Dterminal.jline=false -Dterminal.ansi=true"
             # Uncomment and set to a URL or local path (/data/world.zip) once Ryan sends the backup
             # - name: WORLD
             #   value: "/data/world-backup.zip"
           volumeMounts:
             - mountPath: /data
               name: atm10-ryan-pvc
+          startupProbe:
+            tcpSocket:
+              port: 25565
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            failureThreshold: 120
       volumes:
         - name: atm10-ryan-pvc
           persistentVolumeClaim:
