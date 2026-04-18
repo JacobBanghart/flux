@@ -6,6 +6,19 @@ metadata:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
+  name: nextcloud-app-pvc
+  namespace: nextcloud
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
   name: nextcloud-data-pvc
   namespace: nextcloud
 spec:
@@ -85,8 +98,13 @@ spec:
         databaseKey: POSTGRES_DB
 
     persistence:
+      # App files (/var/www/html) on local-path for fast rsync during init
       enabled: true
-      existingClaim: nextcloud-data-pvc
+      existingClaim: nextcloud-app-pvc
+      # User data (/var/www/html/data) on NFS for large file storage
+      nextcloudData:
+        enabled: true
+        existingClaim: nextcloud-data-pvc
 
     livenessProbe:
       enabled: true
