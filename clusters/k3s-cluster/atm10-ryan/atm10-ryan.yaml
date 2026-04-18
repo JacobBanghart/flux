@@ -1,0 +1,105 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: atm10-ryan
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: atm10-ryan-pvc
+  namespace: atm10-ryan
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: nfs-rwx-ephemeral
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: atm10-ryan
+  namespace: atm10-ryan
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: atm10-ryan
+  template:
+    metadata:
+      labels:
+        app: atm10-ryan
+    spec:
+      containers:
+        - name: minecraft
+          image: itzg/minecraft-server:java21
+          imagePullPolicy: Always
+          stdin: true
+          tty: true
+          resources:
+            requests:
+              cpu: "12"
+              memory: "12Gi"
+            limits:
+              cpu: "12"
+              memory: "12Gi"
+          ports:
+            - containerPort: 25565
+              protocol: TCP
+          env:
+            - name: EULA
+              value: "TRUE"
+            - name: MODPACK_PLATFORM
+              value: "AUTO_CURSEFORGE"
+            - name: CF_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: curseforge-api-key
+                  key: CF_API_KEY
+            - name: CF_PAGE_URL
+              value: "https://www.curseforge.com/minecraft/modpacks/all-the-mods-10"
+            - name: CF_FILENAME_MATCHER
+              value: "6.6"
+            - name: MODE
+              value: "survival"
+            - name: ALLOW_FLIGHT
+              value: "TRUE"
+            - name: OPS
+              value: "Jqwop"
+            - name: MEMORY
+              value: ""
+            - name: USE_AIKAR_FLAGS
+              value: "false"
+            - name: JVM_OPTS
+              value: "-Xms12288M -Xmx12288M -XX:+EnableDynamicAgentLoading -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -XX:G1NewSizePercent=30 -XX:G1MaxNewSizePercent=40 -XX:G1HeapRegionSize=32M -XX:G1ReservePercent=20 -XX:G1HeapWastePercent=5 -XX:G1MixedGCCountTarget=4 -XX:InitiatingHeapOccupancyPercent=15 -XX:G1MixedGCLiveThresholdPercent=90 -XX:G1RSetUpdatingPauseTimePercent=5 -XX:SurvivorRatio=32 -XX:+PerfDisableSharedMem -XX:MaxTenuringThreshold=1 -Dterminal.jline=false -Dterminal.ansi=true"
+            # Uncomment and set to a URL or local path (/data/world.zip) once Ryan sends the backup
+            # - name: WORLD
+            #   value: "/data/world-backup.zip"
+          volumeMounts:
+            - mountPath: /data
+              name: atm10-ryan-pvc
+      volumes:
+        - name: atm10-ryan-pvc
+          persistentVolumeClaim:
+            claimName: atm10-ryan-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: atm10-ryan
+  namespace: atm10-ryan
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: atm10-ryan.jacobbanghart.com
+spec:
+  type: LoadBalancer
+  selector:
+    app: atm10-ryan
+  ports:
+    - port: 25566
+      targetPort: 25565
+      protocol: TCP
+      name: minecraft
