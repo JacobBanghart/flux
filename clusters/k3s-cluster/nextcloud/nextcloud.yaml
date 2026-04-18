@@ -29,6 +29,15 @@ spec:
     requests:
       storage: 100Gi
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nextcloud-apache-config
+  namespace: nextcloud
+data:
+  servername.conf: |
+    ServerName nextcloud.jacobbanghart.com
+---
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
@@ -131,6 +140,15 @@ spec:
       timeoutSeconds: 5
       failureThreshold: 20
       successThreshold: 1
+
+    extraVolumes:
+      - name: apache-servername
+        configMap:
+          name: nextcloud-apache-config
+    extraVolumeMounts:
+      - name: apache-servername
+        mountPath: /etc/apache2/conf-enabled/servername.conf
+        subPath: servername.conf
 
     # Disable all bundled subcharts
     postgresql:
