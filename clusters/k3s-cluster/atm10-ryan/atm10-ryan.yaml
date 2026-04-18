@@ -46,7 +46,7 @@ spec:
               memory: "12Gi"
             limits:
               cpu: "12"
-              memory: "32Gi"
+              memory: "16Gi"
           ports:
             - containerPort: 25565
               protocol: TCP
@@ -73,7 +73,7 @@ spec:
             - name: INIT_MEMORY
               value: "12G"
             - name: MAX_MEMORY
-              value: "16G"
+              value: "12G"
             - name: JVM_XX_OPTS
               value: "-XX:ActiveProcessorCount=12 -XX:ParallelGCThreads=9 -XX:ConcGCThreads=3"
             - name: USE_AIKAR_FLAGS
