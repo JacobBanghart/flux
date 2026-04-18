@@ -22,7 +22,7 @@ metadata:
   name: atm10-ryan
   namespace: atm10-ryan
 spec:
-  replicas: 1
+  replicas: 0
   revisionHistoryLimit: 2
   strategy:
     type: Recreate
