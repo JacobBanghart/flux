@@ -74,16 +74,20 @@ spec:
       enabled: true
       existingClaim: nextcloud-data-pvc
 
-    # Disable bundled DB subcharts
+    # Disable all bundled subcharts
     postgresql:
       enabled: false
     mariadb:
       enabled: false
-
     redis:
+      enabled: false
+
+    externalRedis:
       enabled: true
-      image:
-        tag: 7.4.2-debian-12-r0
+      host: redis
+      port: "6379"
+      existingSecret: nextcloud-redis-secret
+      existingSecretPasswordKey: REDIS_PASSWORD
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
