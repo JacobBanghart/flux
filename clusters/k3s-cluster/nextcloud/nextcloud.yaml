@@ -48,12 +48,25 @@ spec:
         secretName: nextcloud-admin-secret
         usernameKey: NEXTCLOUD_ADMIN_USER
         passwordKey: NEXTCLOUD_ADMIN_PASSWORD
+      extraEnv:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: nextcloud-redis-secret
+              key: REDIS_PASSWORD
       configs:
         custom.config.php: |-
           <?php
           $CONFIG = array(
             'trusted_proxies' => ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'],
             'overwriteprotocol' => 'https',
+            'memcache.local' => '\OC\Memcache\Redis',
+            'memcache.locking' => '\OC\Memcache\Redis',
+            'redis' => array(
+              'host' => 'redis',
+              'port' => 6379,
+              'password' => getenv('REDIS_PASSWORD'),
+            ),
           );
 
     internalDatabase:
@@ -106,27 +119,4 @@ spec:
     redis:
       enabled: false
 
-    externalRedis:
-      enabled: true
-      host: redis
-      port: "6379"
-      existingSecret: nextcloud-redis-secret
-      existingSecretPasswordKey: REDIS_PASSWORD
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: nextcloud-ingress
-  namespace: nextcloud
-spec:
-  rules:
-    - host: nextcloud.jacobbanghart.com
-      http:
-        paths:
-          - pathType: Prefix
-            path: "/"
-            backend:
-              service:
-                name: nextcloud
-                port:
-                  number: 8080
+
