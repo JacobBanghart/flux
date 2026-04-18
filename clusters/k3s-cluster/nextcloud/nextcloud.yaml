@@ -75,7 +75,8 @@ spec:
     externalDatabase:
       enabled: true
       type: postgresql
-      host: postgresql:5432
+      host: postgresql
+      port: 5432
       existingSecret:
         enabled: true
         secretName: nextcloud-postgres-secret
