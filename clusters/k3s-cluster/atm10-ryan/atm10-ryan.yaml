@@ -42,11 +42,11 @@ spec:
           tty: true
           resources:
             requests:
-              cpu: "12"
+              cpu: "4"
               memory: "12Gi"
             limits:
               cpu: "12"
-              memory: "16Gi"
+              memory: "32Gi"
           ports:
             - containerPort: 25565
               protocol: TCP
@@ -71,15 +71,13 @@ spec:
             - name: OPS
               value: "Jqwop"
             - name: INIT_MEMORY
-              value: "10240M"
+              value: "12G"
             - name: MAX_MEMORY
-              value: "10240M"
-            - name: USE_AIKAR_FLAGS
-              value: "false"
+              value: "16G"
             - name: JVM_XX_OPTS
-              value: "-XX:+EnableDynamicAgentLoading -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -XX:G1NewSizePercent=30 -XX:G1MaxNewSizePercent=40 -XX:G1HeapRegionSize=32M -XX:G1ReservePercent=20 -XX:G1HeapWastePercent=5 -XX:G1MixedGCCountTarget=4 -XX:InitiatingHeapOccupancyPercent=15 -XX:G1MixedGCLiveThresholdPercent=90 -XX:G1RSetUpdatingPauseTimePercent=5 -XX:SurvivorRatio=32 -XX:+PerfDisableSharedMem -XX:MaxTenuringThreshold=1"
-            - name: JVM_OPTS
-              value: "-Dterminal.jline=false -Dterminal.ansi=true"
+              value: "-XX:ActiveProcessorCount=12 -XX:ParallelGCThreads=9 -XX:ConcGCThreads=3"
+            - name: USE_AIKAR_FLAGS
+              value: "true"
           volumeMounts:
             - mountPath: /data
               name: atm10-ryan-pvc
