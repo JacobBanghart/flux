@@ -71,9 +71,9 @@ spec:
             - name: OPS
               value: "Jqwop"
             - name: INIT_MEMORY
-              value: "12288M"
+              value: "10240M"
             - name: MAX_MEMORY
-              value: "12288M"
+              value: "10240M"
             - name: USE_AIKAR_FLAGS
               value: "false"
             - name: JVM_XX_OPTS
