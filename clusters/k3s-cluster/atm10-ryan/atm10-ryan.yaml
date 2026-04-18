@@ -46,7 +46,7 @@ spec:
               memory: "12Gi"
             limits:
               cpu: "12"
-              memory: "14Gi"
+              memory: "16Gi"
           ports:
             - containerPort: 25565
               protocol: TCP
