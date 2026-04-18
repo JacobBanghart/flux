@@ -1,0 +1,102 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nextcloud
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nextcloud-data-pvc
+  namespace: nextcloud
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-rwx
+  resources:
+    requests:
+      storage: 100Gi
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: nextcloud
+  namespace: nextcloud
+spec:
+  interval: 5m
+  url: https://nextcloud.github.io/helm/
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: nextcloud
+  namespace: nextcloud
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: nextcloud
+      version: "6.x"
+      sourceRef:
+        kind: HelmRepository
+        name: nextcloud
+      interval: 5m
+  values:
+    nextcloud:
+      host: nextcloud.jacobbanghart.com
+      existingSecret:
+        enabled: true
+        secretName: nextcloud-admin-secret
+        usernameKey: NEXTCLOUD_ADMIN_USER
+        passwordKey: NEXTCLOUD_ADMIN_PASSWORD
+      configs:
+        custom.config.php: |-
+          <?php
+          $CONFIG = array(
+            'trusted_proxies' => ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'],
+            'overwriteprotocol' => 'https',
+          );
+
+    internalDatabase:
+      enabled: false
+
+    externalDatabase:
+      enabled: true
+      type: postgresql
+      host: postgresql:5432
+      existingSecret:
+        enabled: true
+        secretName: nextcloud-postgres-secret
+        usernameKey: POSTGRES_USER
+        passwordKey: POSTGRES_PASSWORD
+        databaseKey: POSTGRES_DB
+
+    persistence:
+      enabled: true
+      existingClaim: nextcloud-data-pvc
+
+    # Disable bundled DB subcharts
+    postgresql:
+      enabled: false
+    mariadb:
+      enabled: false
+
+    redis:
+      enabled: true
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nextcloud-ingress
+  namespace: nextcloud
+spec:
+  rules:
+    - host: nextcloud.jacobbanghart.com
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: nextcloud
+                port:
+                  number: 8080
