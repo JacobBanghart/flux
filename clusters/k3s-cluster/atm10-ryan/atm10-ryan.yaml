@@ -71,7 +71,7 @@ spec:
             - name: OPS
               value: "Jqwop"
             - name: INIT_MEMORY
-              value: "12G"
+              value: "4G"
             - name: MAX_MEMORY
               value: "12G"
             - name: JVM_XX_OPTS
