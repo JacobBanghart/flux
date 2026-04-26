@@ -1,0 +1,95 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubernetes-dashboard
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: kubernetes-dashboard
+  namespace: kubernetes-dashboard
+spec:
+  interval: 1h
+  url: https://kubernetes.github.io/dashboard/
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kubernetes-dashboard
+  namespace: kubernetes-dashboard
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: kubernetes-dashboard
+      version: "7.*"
+      sourceRef:
+        kind: HelmRepository
+        name: kubernetes-dashboard
+        namespace: kubernetes-dashboard
+      interval: 10m
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    kong:
+      proxy:
+        http:
+          enabled: true
+          servicePort: 80
+          containerPort: 8000
+---
+# ServiceAccount with cluster-admin for full cluster visibility
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dashboard-admin
+  namespace: kubernetes-dashboard
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dashboard-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: dashboard-admin
+    namespace: kubernetes-dashboard
+---
+# Long-lived token - retrieve with:
+# kubectl get secret dashboard-admin-token -n kubernetes-dashboard -o jsonpath='{.data.token}' | base64 -d
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dashboard-admin-token
+  namespace: kubernetes-dashboard
+  annotations:
+    kubernetes.io/service-account.name: dashboard-admin
+type: kubernetes.io/service-account-token
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kubernetes-dashboard
+  namespace: kubernetes-dashboard
+  annotations:
+    # basic-auth middleware is in traefik namespace
+    traefik.ingress.kubernetes.io/router.middlewares: traefik-basic-auth@kubernetescrd
+spec:
+  rules:
+    - host: dashboard.jacobbanghart.com
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: kubernetes-dashboard-kong-proxy
+                port:
+                  number: 80
