@@ -503,8 +503,6 @@ spec:
             - --mode=dev-container
             - --smp=2
             - --overprovisioned
-            - -X=redpanda.empty_seed_starts_cluster=true
-            - -X=redpanda.auto_create_topics_enabled=true
           env:
             - name: ALLOW_PLAINTEXT_LISTENER
               value: "true"
