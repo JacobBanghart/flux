@@ -28,7 +28,7 @@ spec:
   chart:
     spec:
       chart: sentry
-      version: "24.x"
+      version: "30.x"
       sourceRef:
         kind: HelmRepository
         name: sentry
