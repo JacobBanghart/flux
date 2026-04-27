@@ -165,6 +165,10 @@ spec:
 
     postgresql:
       enabled: true
+      auth:
+        existingSecret: sentry-postgres-secret
+        secretKeys:
+          adminPasswordKey: postgres-password
       persistence:
         enabled: true
         size: 20Gi
