@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: posthog
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: posthog
+  namespace: posthog
+spec:
+  interval: 1h
+  url: https://posthog.github.io/charts-clickhouse/
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: posthog
+  namespace: posthog
+spec:
+  interval: 10m
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: posthog
+      version: "30.x"
+      sourceRef:
+        kind: HelmRepository
+        name: posthog
+      interval: 1h
+  values:
+    cloud: private
+
+    siteUrl: https://posthog.backtosafety.app
+
+    # Secret key for Django signing/session hashing
+    # kubectl create secret generic posthog-secret -n posthog \
+    #   --from-literal=POSTHOG_SECRET_KEY=<random-50-char-string> \
+    #   --from-literal=POSTHOG_ENCRYPTION_SALT=<random-32-char-string>
+    posthogSecretKey:
+      existingSecret: posthog-secret
+      existingSecretKey: POSTHOG_SECRET_KEY
+
+    web:
+      secureCookies: true
+
+    # Enable session replay (inputs + images masked server-side for extra safety)
+    recordings:
+      enabled: true
+
+    ingress:
+      enabled: true
+      hostname: posthog.backtosafety.app
+      # No type = plain kubernetes.io/ingress class; traefik picks it up as default
+      type: ""
+      annotations:
+        kubernetes.io/ingress.class: traefik
+
+    # Disable bundled cert-manager and nginx — traefik handles TLS
+    cert-manager:
+      enabled: false
+    ingress-nginx:
+      enabled: false
+
+    # Bundled subcharts — all enabled for a self-contained install
+    postgresql:
+      enabled: true
+      persistence:
+        enabled: true
+        size: 20Gi
+
+    redis:
+      enabled: true
+
+    clickhouse:
+      enabled: true
+      persistence:
+        enabled: true
+        size: 50Gi
+
+    kafka:
+      enabled: true
+
+    zookeeper:
+      enabled: true

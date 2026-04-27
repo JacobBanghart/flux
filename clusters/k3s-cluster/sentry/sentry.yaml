@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sentry
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: sentry
+  namespace: sentry
+spec:
+  interval: 1h
+  url: https://sentry-kubernetes.github.io/charts
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: sentry
+  namespace: sentry
+spec:
+  interval: 10m
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: sentry
+      version: "24.x"
+      sourceRef:
+        kind: HelmRepository
+        name: sentry
+      interval: 1h
+  values:
+    # Secret key for Django signing/session hashing
+    # kubectl create secret generic sentry-secret -n sentry \
+    #   --from-literal=my-secret-key=<random-50-char-string>
+    sentry:
+      existingSecret: sentry-secret
+      existingSecretKey: my-secret-key
+
+    system:
+      adminEmail: admin@backtosafety.app
+      url: https://sentry.backtosafety.app
+
+    ingress:
+      enabled: true
+      ingressClassName: traefik
+      regexPathStyle: traefik
+      hostname: sentry.backtosafety.app
+      # Clear nginx-specific default annotations
+      annotations: {}
+
+    # Disable bundled nginx — traefik is the cluster ingress controller
+    nginx:
+      enabled: false
+
+    # Bundled subcharts — all enabled for a self-contained install
+    postgresql:
+      enabled: true
+      persistence:
+        enabled: true
+        size: 20Gi
+
+    redis:
+      enabled: true
+
+    rabbitmq:
+      enabled: true
+
+    clickhouse:
+      enabled: true
+      clickhouse:
+        persistence:
+          enabled: true
+          size: 50Gi
+
+    kafka:
+      enabled: true
+
+    zookeeper:
+      enabled: true
