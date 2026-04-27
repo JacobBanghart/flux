@@ -38,6 +38,7 @@ metadata:
   namespace: sentry
 spec:
   accessModes: [ReadWriteOnce]
+  storageClassName: nfs-rwx
   resources:
     requests:
       storage: 50Gi
@@ -102,6 +103,7 @@ metadata:
   name: sentry-clickhouse
   namespace: sentry
 spec:
+  clusterIP: None  # headless — required by StatefulSet serviceName for DNS
   selector:
     app: sentry-clickhouse
   ports:
@@ -144,9 +146,12 @@ spec:
         name: sentry
       interval: 1h
   values:
-    # Secret key for Django signing/session hashing
-    # kubectl create secret generic sentry-secret -n sentry \
-    #   --from-literal=my-secret-key=<random-50-char-string>
+    # Secrets required before install:
+    #   kubectl create secret generic sentry-secret -n sentry \
+    #     --from-literal=my-secret-key=<random-50-char-string>
+    #
+    #   kubectl create secret generic sentry-postgres-secret -n sentry \
+    #     --from-literal=postgres-password=<password>
 
     # Run migrations manually after install to avoid hook Job retry race conditions
     # that leave ClickHouse migrations stuck in_progress.
@@ -170,7 +175,9 @@ spec:
       ingressClassName: traefik
       regexPathStyle: traefik
       hostname: sentry.backtosafety.app
-      annotations: {}
+      annotations:
+        traefik.ingress.kubernetes.io/router.entrypoints: websecure
+        traefik.ingress.kubernetes.io/router.tls.certresolver: cloudflare
 
     # Disable bundled nginx — traefik is the cluster ingress controller
     nginx:
@@ -197,15 +204,20 @@ spec:
       persistence:
         enabled: true
         size: 20Gi
+        storageClass: nfs-rwx
 
     redis:
       enabled: true
-
-    rabbitmq:
-      enabled: true
+      master:
+        persistence:
+          storageClass: nfs-rwx
 
     kafka:
       enabled: true
-
-    zookeeper:
-      enabled: true
+      # Single-node cluster: reduce replication factor from the default of 3
+      provisioning:
+        replicationFactor: 1
+      controller:
+        replicaCount: 1
+        persistence:
+          storageClass: nfs-rwx
