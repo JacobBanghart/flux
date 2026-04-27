@@ -3,6 +3,79 @@ kind: Namespace
 metadata:
   name: sentry
 ---
+# ── ClickHouse for Sentry (chart 30.x removed the bundled subchart) ────────────
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sentry-clickhouse-data
+  namespace: sentry
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: sentry-clickhouse
+  namespace: sentry
+spec:
+  serviceName: sentry-clickhouse
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sentry-clickhouse
+  template:
+    metadata:
+      labels:
+        app: sentry-clickhouse
+    spec:
+      containers:
+        - name: clickhouse
+          image: clickhouse/clickhouse-server:24.8
+          ports:
+            - containerPort: 8123  # HTTP
+            - containerPort: 9000  # native TCP
+          env:
+            - name: CLICKHOUSE_DB
+              value: default
+            - name: CLICKHOUSE_USER
+              value: default
+            - name: CLICKHOUSE_PASSWORD
+              value: ""
+            - name: CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT
+              value: "1"
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/clickhouse
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 8123
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: sentry-clickhouse-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sentry-clickhouse
+  namespace: sentry
+spec:
+  selector:
+    app: sentry-clickhouse
+  ports:
+    - name: http
+      port: 8123
+      targetPort: 8123
+    - name: tcp
+      port: 9000
+      targetPort: 9000
+---
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
@@ -51,14 +124,24 @@ spec:
       ingressClassName: traefik
       regexPathStyle: traefik
       hostname: sentry.backtosafety.app
-      # Clear nginx-specific default annotations
       annotations: {}
 
     # Disable bundled nginx — traefik is the cluster ingress controller
     nginx:
       enabled: false
 
-    # Bundled subcharts — all enabled for a self-contained install
+    # chart 30.x removed the bundled ClickHouse subchart; point at our StatefulSet
+    clickhouse:
+      enabled: false
+    externalClickhouse:
+      host: sentry-clickhouse
+      tcpPort: 9000
+      httpPort: 8123
+      username: default
+      password: ""
+      database: default
+      singleNode: true
+
     postgresql:
       enabled: true
       persistence:
@@ -70,13 +153,6 @@ spec:
 
     rabbitmq:
       enabled: true
-
-    clickhouse:
-      enabled: true
-      clickhouse:
-        persistence:
-          enabled: true
-          size: 50Gi
 
     kafka:
       enabled: true
