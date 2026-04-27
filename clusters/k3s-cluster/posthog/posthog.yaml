@@ -518,6 +518,7 @@ spec:
               value: MkU3OEVBNTcwNTJENDM2Qk
           ports:
             - containerPort: 9092
+            - containerPort: 9093
           volumeMounts:
             - name: data
               mountPath: /var/lib/kafka/data
@@ -543,6 +544,8 @@ spec:
   ports:
     - name: kafka
       port: 9092
+    - name: controller
+      port: 9093
     - name: admin
       port: 9644
 ---
