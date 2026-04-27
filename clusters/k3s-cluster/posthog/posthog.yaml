@@ -489,8 +489,10 @@ spec:
       containers:
         - name: redpanda
           image: docker.redpanda.com/redpandadata/redpanda:v23.3.14
-          command:
-            - /usr/bin/rpk
+          # Use args (not command) to keep /entrypoint.sh as ENTRYPOINT.
+          # entrypoint else-branch: exec /usr/bin/rpk $@ when
+          # ENABLE_DEFAULT_LISTENERS != true
+          args:
             - redpanda
             - start
             - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
