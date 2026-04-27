@@ -153,9 +153,7 @@ spec:
     #   kubectl create secret generic sentry-postgres-secret -n sentry \
     #     --from-literal=postgres-password=<password>
 
-    # Run migrations manually after install to avoid hook Job retry race conditions
-    # that leave ClickHouse migrations stuck in_progress.
-    asHook: false
+    asHook: true
 
     relay:
       strategyType: Recreate
