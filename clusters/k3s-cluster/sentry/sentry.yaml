@@ -141,11 +141,14 @@ spec:
     - kustomize:
         patches:
           - patch: |
-              - op: replace
-                path: /spec/strategy/type
-                value: Recreate
-              - op: remove
-                path: /spec/strategy/rollingUpdate
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: not-used
+              spec:
+                strategy:
+                  type: Recreate
+                  rollingUpdate: null
             target:
               kind: Deployment
   chart:
