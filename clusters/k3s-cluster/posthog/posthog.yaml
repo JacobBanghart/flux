@@ -520,6 +520,7 @@ spec:
             - redpanda.empty_seed_starts_cluster=true
             - --set
             - redpanda.auto_create_topics_enabled=true
+            - --unsafe-bypass-fsync
           env:
             - name: ALLOW_PLAINTEXT_LISTENER
               value: "true"
