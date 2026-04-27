@@ -135,22 +135,6 @@ spec:
   upgrade:
     remediation:
       retries: 3
-  # Dev cluster — use Recreate on all Deployments to avoid RollingUpdate
-  # deadlocks on a single-node pod-limited environment.
-  postRenderers:
-    - kustomize:
-        patches:
-          - patch: |
-              apiVersion: apps/v1
-              kind: Deployment
-              metadata:
-                name: not-used
-              spec:
-                strategy:
-                  type: Recreate
-                  rollingUpdate: null
-            target:
-              kind: Deployment
   chart:
     spec:
       chart: sentry
@@ -163,9 +147,14 @@ spec:
     # Secret key for Django signing/session hashing
     # kubectl create secret generic sentry-secret -n sentry \
     #   --from-literal=my-secret-key=<random-50-char-string>
+    relay:
+      strategyType: Recreate
+
     sentry:
       existingSecret: sentry-secret
       existingSecretKey: my-secret-key
+      web:
+        strategyType: Recreate
 
     system:
       adminEmail: admin@backtosafety.app
