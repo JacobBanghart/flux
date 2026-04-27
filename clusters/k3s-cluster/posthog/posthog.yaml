@@ -840,7 +840,7 @@ spec:
           command: [sh, -c, "until curl -sf http://kafka:9644/v1/status/ready; do sleep 5; done"]
       containers:
         - name: migrate
-          image: posthog/posthog:latest
+          image: posthog/posthog-foss:latest-release
           command: [sh, -c]
           args:
             - python manage.py migrate && python manage.py migrate_clickhouse && python manage.py run_async_migrations
@@ -916,7 +916,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: posthog/posthog:latest
+          image: posthog/posthog-foss:latest-release
           command: [./bin/start-backend]
           envFrom:
             - configMapRef:
@@ -971,7 +971,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: posthog/posthog:latest
+          image: posthog/posthog-foss:latest-release
           command: [./bin/docker-worker-celery, --with-scheduler]
           envFrom:
             - configMapRef:
@@ -1006,7 +1006,7 @@ spec:
     spec:
       containers:
         - name: temporal-django-worker
-          image: posthog/posthog:latest
+          image: posthog/posthog-foss:latest-release
           command: [./bin/temporal-django-worker]
           envFrom:
             - configMapRef:
@@ -1041,7 +1041,7 @@ spec:
     spec:
       containers:
         - name: plugins
-          image: posthog/posthog-node:latest
+          image: ghcr.io/posthog/posthog-node:latest
           command: [node, nodejs/dist/index.js]
           envFrom:
             - configMapRef:
@@ -1084,7 +1084,7 @@ spec:
     spec:
       containers:
         - name: ingestion-general
-          image: posthog/posthog-node:latest
+          image: ghcr.io/posthog/posthog-node:latest
           command: [node, nodejs/dist/index.js]
           envFrom:
             - configMapRef:
@@ -1115,7 +1115,7 @@ spec:
     spec:
       containers:
         - name: ingestion-sessionreplay
-          image: posthog/posthog-node:latest
+          image: ghcr.io/posthog/posthog-node:latest
           command: [node, nodejs/dist/index.js]
           envFrom:
             - configMapRef:
@@ -1146,7 +1146,7 @@ spec:
     spec:
       containers:
         - name: recording-api
-          image: posthog/posthog-node:latest
+          image: ghcr.io/posthog/posthog-node:latest
           command: [node, nodejs/dist/index.js]
           envFrom:
             - configMapRef:
@@ -1189,7 +1189,7 @@ spec:
     spec:
       containers:
         - name: ingestion-error-tracking
-          image: posthog/posthog-node:latest
+          image: ghcr.io/posthog/posthog-node:latest
           command: [node, nodejs/dist/index.js]
           envFrom:
             - configMapRef:
@@ -1220,7 +1220,7 @@ spec:
     spec:
       containers:
         - name: ingestion-logs
-          image: posthog/posthog-node:latest
+          image: ghcr.io/posthog/posthog-node:latest
           command: [node, nodejs/dist/index.js]
           envFrom:
             - configMapRef:
@@ -1248,7 +1248,7 @@ spec:
     spec:
       containers:
         - name: ingestion-traces
-          image: posthog/posthog-node:latest
+          image: ghcr.io/posthog/posthog-node:latest
           command: [node, nodejs/dist/index.js]
           envFrom:
             - configMapRef:
