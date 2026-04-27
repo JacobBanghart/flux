@@ -3,6 +3,22 @@ kind: Namespace
 metadata:
   name: sentry
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sentry-clickhouse-config
+  namespace: sentry
+data:
+  experimental.xml: |
+    <clickhouse>
+      <listen_host>0.0.0.0</listen_host>
+      <profiles>
+        <default>
+          <allow_experimental_json_type>1</allow_experimental_json_type>
+        </default>
+      </profiles>
+    </clickhouse>
+---
 # ── ClickHouse for Sentry (chart 30.x removed the bundled subchart) ────────────
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -49,6 +65,8 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/clickhouse
+            - name: ch-config
+              mountPath: /etc/clickhouse-server/config.d
           readinessProbe:
             httpGet:
               path: /ping
@@ -59,6 +77,9 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: sentry-clickhouse-data
+        - name: ch-config
+          configMap:
+            name: sentry-clickhouse-config
 ---
 apiVersion: v1
 kind: Service

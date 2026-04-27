@@ -3,6 +3,27 @@ kind: Namespace
 metadata:
   name: posthog
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: livestream-config
+  namespace: posthog
+data:
+  configs.yml: |
+    mmdb:
+      path: /geoip/GeoLite2-City.mmdb
+    consumers:
+      event:
+        brokers: "kafka:9092"
+        topic: "clickhouse_events_json"
+        security_protocol: PLAINTEXT
+        group_id: "livestream"
+      session_recording:
+        brokers: "kafka:9092"
+        topic: "session_recording_events"
+        security_protocol: PLAINTEXT
+        group_id: "livestream-session"
+---
 # ── Secrets ──────────────────────────────────────────────────────────────────
 # Secret created manually:
 #   kubectl create secret generic posthog-secret -n posthog \
@@ -54,7 +75,7 @@ data:
             <posthog>
                 <shard>
                     <replica>
-                        <host>clickhouse</host>
+                        <host>clickhouse-0.clickhouse.posthog.svc.cluster.local</host>
                         <port>9000</port>
                     </replica>
                 </shard>
@@ -420,7 +441,7 @@ spec:
     spec:
       containers:
         - name: clickhouse
-          image: clickhouse/clickhouse-server:26.3.9.8
+          image: clickhouse/clickhouse-server:22.8
           env:
             - name: CLICKHOUSE_SKIP_USER_SETUP
               value: "1"
@@ -749,7 +770,7 @@ spec:
             - name: POSTGRES_SEEDS
               value: db
             - name: DYNAMIC_CONFIG_FILE_PATH
-              value: config/dynamicconfig/development-sql.yaml
+              value: config/dynamicconfig/docker.yaml
             - name: ENABLE_ES
               value: "true"
             - name: ES_SEEDS
@@ -792,6 +813,7 @@ spec:
       labels:
         app: posthog-temporal-ui
     spec:
+      enableServiceLinks: false
       containers:
         - name: temporal-ui
           image: temporalio/ui:2.47.2
@@ -891,7 +913,7 @@ data:
   CDP_REDIS_PORT: "6379"
   COOKIELESS_REDIS_HOST: redis7
   COOKIELESS_REDIS_PORT: "6379"
-  TEMPORAL_HOST: temporal
+  TEMPORAL_HOST: temporal:7233
   OTEL_SDK_DISABLED: "true"
   POSTHOG_SKIP_MIGRATION_CHECKS: "1"
   SKIP_SERVICE_VERSION_REQUIREMENTS: "1"
@@ -996,7 +1018,7 @@ metadata:
   name: temporal-django-worker
   namespace: posthog
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: posthog-temporal-django-worker
@@ -1364,9 +1386,22 @@ spec:
       labels:
         app: posthog-feature-flags
     spec:
+      initContainers:
+        - name: copy-geoip
+          image: ghcr.io/posthog/posthog/feature-flags:master
+          command: [sh, -c, "cp /app/share/GeoLite2-City.mmdb /share/GeoLite2-City.mmdb"]
+          volumeMounts:
+            - name: share
+              mountPath: /share
+      volumes:
+        - name: share
+          emptyDir: {}
       containers:
         - name: feature-flags
           image: ghcr.io/posthog/posthog/feature-flags:master
+          volumeMounts:
+            - name: share
+              mountPath: /share
           env:
             - name: WRITE_DATABASE_URL
               value: postgres://posthog:posthog@db:5432/posthog
@@ -1478,14 +1513,34 @@ spec:
       labels:
         app: posthog-livestream
     spec:
+      initContainers:
+        - name: copy-geoip
+          image: ghcr.io/posthog/posthog/feature-flags:master
+          command: ["sh", "-c", "cp /app/share/GeoLite2-City.mmdb /geoip/GeoLite2-City.mmdb"]
+          volumeMounts:
+            - name: geoip
+              mountPath: /geoip
       containers:
         - name: livestream
           image: ghcr.io/posthog/posthog/livestream:master
           env:
             - name: KAFKA_HOSTS
               value: kafka:9092
+            - name: MMDB_PATH
+              value: /geoip/GeoLite2-City.mmdb
+          volumeMounts:
+            - name: geoip
+              mountPath: /geoip
+            - name: livestream-config
+              mountPath: /configs
           ports:
             - containerPort: 8080
+      volumes:
+        - name: geoip
+          emptyDir: {}
+        - name: livestream-config
+          configMap:
+            name: livestream-config
 ---
 apiVersion: v1
 kind: Service
