@@ -17,6 +17,17 @@ data:
           <allow_experimental_json_type>1</allow_experimental_json_type>
         </default>
       </profiles>
+      <settings>
+        <allow_experimental_json_type>1</allow_experimental_json_type>
+      </settings>
+    </clickhouse>
+  users_experimental.xml: |
+    <clickhouse>
+      <profiles>
+        <default>
+          <allow_experimental_json_type>1</allow_experimental_json_type>
+        </default>
+      </profiles>
     </clickhouse>
 ---
 # ── ClickHouse for Sentry (chart 30.x removed the bundled subchart) ────────────
@@ -66,7 +77,11 @@ spec:
             - name: data
               mountPath: /var/lib/clickhouse
             - name: ch-config
-              mountPath: /etc/clickhouse-server/config.d
+              mountPath: /etc/clickhouse-server/config.d/experimental.xml
+              subPath: experimental.xml
+            - name: ch-config
+              mountPath: /etc/clickhouse-server/users.d/users_experimental.xml
+              subPath: users_experimental.xml
           readinessProbe:
             httpGet:
               path: /ping
@@ -120,6 +135,19 @@ spec:
   upgrade:
     remediation:
       retries: 3
+  # Dev cluster — use Recreate on all Deployments to avoid RollingUpdate
+  # deadlocks on a single-node pod-limited environment.
+  postRenderers:
+    - kustomize:
+        patches:
+          - patch: |
+              - op: replace
+                path: /spec/strategy/type
+                value: Recreate
+              - op: remove
+                path: /spec/strategy/rollingUpdate
+            target:
+              kind: Deployment
   chart:
     spec:
       chart: sentry
