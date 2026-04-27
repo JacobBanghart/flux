@@ -19,6 +19,7 @@ metadata:
   namespace: sentry
 spec:
   interval: 10m
+  timeout: 20m
   install:
     remediation:
       retries: 3
