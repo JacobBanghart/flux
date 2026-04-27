@@ -147,6 +147,11 @@ spec:
     # Secret key for Django signing/session hashing
     # kubectl create secret generic sentry-secret -n sentry \
     #   --from-literal=my-secret-key=<random-50-char-string>
+
+    # Run migrations manually after install to avoid hook Job retry race conditions
+    # that leave ClickHouse migrations stuck in_progress.
+    asHook: false
+
     relay:
       strategyType: Recreate
 
