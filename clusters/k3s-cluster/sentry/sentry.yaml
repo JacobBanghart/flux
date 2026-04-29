@@ -61,7 +61,7 @@ spec:
     spec:
       containers:
         - name: clickhouse
-          image: clickhouse/clickhouse-server:24.8
+          image: altinity/clickhouse-server:25.3.6.10034.altinitystable
           ports:
             - containerPort: 8123  # HTTP
             - containerPort: 9000  # native TCP
@@ -140,7 +140,7 @@ spec:
   chart:
     spec:
       chart: sentry
-      version: "30.x"
+      version: "30.2.0"
       sourceRef:
         kind: HelmRepository
         name: sentry
@@ -215,6 +215,13 @@ spec:
       # Single-node cluster: reduce replication factor from the default of 3
       provisioning:
         replicationFactor: 1
+      extraConfigYaml:
+        default.replication.factor: 1
+        min.insync.replicas: 1
+        offsets.topic.replication.factor: 1
+        offsets.topic.num.partitions: 1
+        transaction.state.log.replication.factor: 1
+        transaction.state.log.min.isr: 1
       controller:
         replicaCount: 1
         persistence:
