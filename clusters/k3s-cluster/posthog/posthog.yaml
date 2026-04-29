@@ -338,6 +338,43 @@ spec:
   ports:
     - port: 5432
 ---
+# ── Auxiliary DB bootstrap ────────────────────────────────────────────────────
+# The stock postgres initdb.d scripts only run on a pristine data directory.
+# This job makes the extra PostHog databases idempotent so a restart/recreate
+# does not leave the stack half-initialized.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: posthog-db-bootstrap
+  namespace: posthog
+spec:
+  backoffLimit: 6
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: bootstrap
+          image: postgres:15-alpine
+          env:
+            - name: PGPASSWORD
+              value: posthog
+          command: [sh, -c]
+          args:
+            - |
+              set -e
+              until pg_isready -h db -U posthog; do sleep 2; done
+
+              ensure_db() {
+                db_name="$1"
+                if ! psql -h db -U posthog -d postgres -tc "SELECT 1 FROM pg_database WHERE datname='${db_name}'" | grep -q 1; then
+                  psql -h db -U posthog -d postgres -c "CREATE DATABASE ${db_name};"
+                fi
+              }
+
+              ensure_db cyclotron
+              ensure_db posthog_persons
+              ensure_db behavioral_cohorts
+---
 # ── Redis ─────────────────────────────────────────────────────────────────────
 apiVersion: apps/v1
 kind: StatefulSet
@@ -948,7 +985,9 @@ spec:
       containers:
         - name: web
           image: posthog/posthog-foss@sha256:225e45c1c586c63532184a5eb9f4ba70cd5d3d60977579d46bcbe7f6021e699d
-          command: [./bin/start-backend]
+          command: [sh, -c]
+          args:
+            - ./bin/migrate-check && python3 manage.py runserver 0.0.0.0:8000
           envFrom:
             - configMapRef:
                 name: posthog-env
@@ -963,6 +1002,10 @@ spec:
                 secretKeyRef:
                   name: posthog-secret
                   key: POSTHOG_ENCRYPTION_SALT
+            - name: IS_BEHIND_PROXY
+              value: "true"
+            - name: TRUST_ALL_PROXIES
+              value: "true"
           ports:
             - containerPort: 8000
           readinessProbe:
@@ -1240,7 +1283,8 @@ metadata:
   name: ingestion-logs
   namespace: posthog
 spec:
-  replicas: 1
+  # Optional logs product ingestion. Disabled for initial stable bring-up.
+  replicas: 0
   selector:
     matchLabels:
       app: posthog-ingestion-logs
@@ -1268,7 +1312,8 @@ metadata:
   name: ingestion-traces
   namespace: posthog
 spec:
-  replicas: 1
+  # Optional traces product ingestion. Disabled for initial stable bring-up.
+  replicas: 0
   selector:
     matchLabels:
       app: posthog-ingestion-traces
@@ -1456,7 +1501,8 @@ metadata:
   name: property-defs-rs
   namespace: posthog
 spec:
-  replicas: 1
+  # Not required for initial event capture/UI bring-up.
+  replicas: 0
   selector:
     matchLabels:
       app: posthog-property-defs-rs
@@ -1486,7 +1532,8 @@ metadata:
   name: cyclotron-janitor
   namespace: posthog
 spec:
-  replicas: 1
+  # Not required for initial event capture/UI bring-up.
+  replicas: 0
   selector:
     matchLabels:
       app: posthog-cyclotron-janitor
