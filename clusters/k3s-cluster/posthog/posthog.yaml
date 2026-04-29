@@ -30,6 +30,27 @@ data:
 #     --from-literal=POSTHOG_SECRET_KEY=<50-char-random> \
 #     --from-literal=POSTHOG_ENCRYPTION_SALT=<32-char-random>
 #
+# Database/app credentials secret created manually:
+#   kubectl create secret generic posthog-postgres-secret -n posthog \
+#     --from-literal=POSTGRES_PASSWORD=<postgres-password> \
+#     --from-literal=PGPASSWORD=<postgres-password> \
+#     --from-literal=DATABASE_URL='postgres://posthog:<postgres-password>@db:5432/posthog' \
+#     --from-literal=PERSONS_DATABASE_URL='postgres://posthog:<postgres-password>@db:5432/posthog' \
+#     --from-literal=BEHAVIORAL_COHORTS_DATABASE_URL='postgres://posthog:<postgres-password>@db:5432/posthog' \
+#     --from-literal=CYCLOTRON_DATABASE_URL='postgres://posthog:<postgres-password>@db:5432/cyclotron' \
+#     --from-literal=WRITE_DATABASE_URL='postgres://posthog:<postgres-password>@db:5432/posthog' \
+#     --from-literal=READ_DATABASE_URL='postgres://posthog:<postgres-password>@db:5432/posthog' \
+#     --from-literal=PERSONS_WRITE_DATABASE_URL='postgres://posthog:<postgres-password>@db:5432/posthog' \
+#     --from-literal=PERSONS_READ_DATABASE_URL='postgres://posthog:<postgres-password>@db:5432/posthog' \
+#     --from-literal=POSTGRES_PWD=<postgres-password>
+#
+# Object storage credentials secret created manually:
+#   kubectl create secret generic posthog-objectstorage-secret -n posthog \
+#     --from-literal=MINIO_ROOT_USER=<minio-user> \
+#     --from-literal=MINIO_ROOT_PASSWORD=<minio-password> \
+#     --from-literal=OBJECT_STORAGE_ACCESS_KEY_ID=<minio-user> \
+#     --from-literal=OBJECT_STORAGE_SECRET_ACCESS_KEY=<minio-password>
+#
 # ── ConfigMaps ────────────────────────────────────────────────────────────────
 apiVersion: v1
 kind: ConfigMap
@@ -305,7 +326,10 @@ spec:
             - name: POSTGRES_DB
               value: posthog
             - name: POSTGRES_PASSWORD
-              value: posthog
+              valueFrom:
+                secretKeyRef:
+                  name: posthog-postgres-secret
+                  key: POSTGRES_PASSWORD
           ports:
             - containerPort: 5432
           volumeMounts:
@@ -357,7 +381,10 @@ spec:
           image: postgres:15-alpine
           env:
             - name: PGPASSWORD
-              value: posthog
+              valueFrom:
+                secretKeyRef:
+                  name: posthog-postgres-secret
+                  key: PGPASSWORD
           command: [sh, -c]
           args:
             - |
@@ -640,9 +667,15 @@ spec:
             - mkdir -p /data/posthog /data/ducklake-dev /data/ai-blobs && minio server --address ":19000" --console-address ":19001" /data
           env:
             - name: MINIO_ROOT_USER
-              value: object_storage_root_user
+              valueFrom:
+                secretKeyRef:
+                  name: posthog-objectstorage-secret
+                  key: MINIO_ROOT_USER
             - name: MINIO_ROOT_PASSWORD
-              value: object_storage_root_password
+              valueFrom:
+                secretKeyRef:
+                  name: posthog-objectstorage-secret
+                  key: MINIO_ROOT_PASSWORD
           ports:
             - containerPort: 19000
             - containerPort: 19001
@@ -811,7 +844,10 @@ spec:
             - name: POSTGRES_USER
               value: posthog
             - name: POSTGRES_PWD
-              value: posthog
+              valueFrom:
+                secretKeyRef:
+                  name: posthog-postgres-secret
+                  key: POSTGRES_PWD
             - name: POSTGRES_SEEDS
               value: db
             - name: DYNAMIC_CONFIG_FILE_PATH
@@ -914,6 +950,10 @@ spec:
           envFrom:
             - configMapRef:
                 name: posthog-env
+            - secretRef:
+                name: posthog-postgres-secret
+            - secretRef:
+                name: posthog-objectstorage-secret
           env:
             - name: SECRET_KEY
               valueFrom:
@@ -933,10 +973,8 @@ metadata:
   name: posthog-env
   namespace: posthog
 data:
-  DATABASE_URL: postgres://posthog:posthog@db:5432/posthog
   PGHOST: db
   PGUSER: posthog
-  PGPASSWORD: posthog
   CLICKHOUSE_HOST: clickhouse
   CLICKHOUSE_DATABASE: posthog
   CLICKHOUSE_SECURE: "false"
@@ -948,8 +986,6 @@ data:
   OBJECT_STORAGE_ENABLED: "true"
   OBJECT_STORAGE_ENDPOINT: http://objectstorage:19000
   OBJECT_STORAGE_PUBLIC_ENDPOINT: https://posthog.backtosafety.app
-  OBJECT_STORAGE_ACCESS_KEY_ID: object_storage_root_user
-  OBJECT_STORAGE_SECRET_ACCESS_KEY: object_storage_root_password
   SESSION_RECORDING_V2_S3_ENDPOINT: http://seaweedfs:8333
   SESSION_RECORDING_V2_S3_ACCESS_KEY_ID: any
   SESSION_RECORDING_V2_S3_SECRET_ACCESS_KEY: any
@@ -962,9 +998,6 @@ data:
   OTEL_SDK_DISABLED: "true"
   POSTHOG_SKIP_MIGRATION_CHECKS: "1"
   SKIP_SERVICE_VERSION_REQUIREMENTS: "1"
-  PERSONS_DATABASE_URL: postgres://posthog:posthog@db:5432/posthog
-  BEHAVIORAL_COHORTS_DATABASE_URL: postgres://posthog:posthog@db:5432/posthog
-  CYCLOTRON_DATABASE_URL: postgres://posthog:posthog@db:5432/cyclotron
 ---
 # ── Web (Django backend + frontend) ───────────────────────────────────────────
 apiVersion: apps/v1
@@ -991,6 +1024,10 @@ spec:
           envFrom:
             - configMapRef:
                 name: posthog-env
+            - secretRef:
+                name: posthog-postgres-secret
+            - secretRef:
+                name: posthog-objectstorage-secret
           env:
             - name: SECRET_KEY
               valueFrom:
@@ -1050,6 +1087,10 @@ spec:
           envFrom:
             - configMapRef:
                 name: posthog-env
+            - secretRef:
+                name: posthog-postgres-secret
+            - secretRef:
+                name: posthog-objectstorage-secret
           env:
             - name: SECRET_KEY
               valueFrom:
@@ -1085,6 +1126,10 @@ spec:
           envFrom:
             - configMapRef:
                 name: posthog-env
+            - secretRef:
+                name: posthog-postgres-secret
+            - secretRef:
+                name: posthog-objectstorage-secret
           env:
             - name: SECRET_KEY
               valueFrom:
@@ -1120,6 +1165,10 @@ spec:
           envFrom:
             - configMapRef:
                 name: posthog-env
+            - secretRef:
+                name: posthog-postgres-secret
+            - secretRef:
+                name: posthog-objectstorage-secret
           env:
             - name: ENCRYPTION_SALT_KEYS
               valueFrom:
@@ -1128,6 +1177,16 @@ spec:
                   key: POSTHOG_ENCRYPTION_SALT
           ports:
             - containerPort: 6738
+        - name: plugins-heartbeat
+          image: redis:7.2-alpine
+          command: [sh, -c]
+          args:
+            - |
+              while true; do
+                ts="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+                redis-cli -h redis7 SET "@posthog-plugin-server/ping" "$ts" EX 60 >/dev/null
+                sleep 10
+              done
 ---
 apiVersion: v1
 kind: Service
@@ -1163,6 +1222,10 @@ spec:
           envFrom:
             - configMapRef:
                 name: posthog-env
+            - secretRef:
+                name: posthog-postgres-secret
+            - secretRef:
+                name: posthog-objectstorage-secret
           env:
             - name: PLUGIN_SERVER_MODE
               value: ingestion-v2-combined
@@ -1194,6 +1257,10 @@ spec:
           envFrom:
             - configMapRef:
                 name: posthog-env
+            - secretRef:
+                name: posthog-postgres-secret
+            - secretRef:
+                name: posthog-objectstorage-secret
           env:
             - name: PLUGIN_SERVER_MODE
               value: recordings-blob-ingestion-v2
@@ -1225,6 +1292,10 @@ spec:
           envFrom:
             - configMapRef:
                 name: posthog-env
+            - secretRef:
+                name: posthog-postgres-secret
+            - secretRef:
+                name: posthog-objectstorage-secret
           env:
             - name: PLUGIN_SERVER_MODE
               value: recording-api
@@ -1268,6 +1339,10 @@ spec:
           envFrom:
             - configMapRef:
                 name: posthog-env
+            - secretRef:
+                name: posthog-postgres-secret
+            - secretRef:
+                name: posthog-objectstorage-secret
           env:
             - name: PLUGIN_SERVER_MODE
               value: ingestion-errortracking
@@ -1283,8 +1358,7 @@ metadata:
   name: ingestion-logs
   namespace: posthog
 spec:
-  # Optional logs product ingestion. Disabled for initial stable bring-up.
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: posthog-ingestion-logs
@@ -1300,11 +1374,13 @@ spec:
           envFrom:
             - configMapRef:
                 name: posthog-env
+            - secretRef:
+                name: posthog-postgres-secret
+            - secretRef:
+                name: posthog-objectstorage-secret
           env:
             - name: PLUGIN_SERVER_MODE
               value: ingestion-logs
-            - name: LOGS_REDIS_HOST
-              value: redis7
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -1312,8 +1388,7 @@ metadata:
   name: ingestion-traces
   namespace: posthog
 spec:
-  # Optional traces product ingestion. Disabled for initial stable bring-up.
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: posthog-ingestion-traces
@@ -1329,11 +1404,13 @@ spec:
           envFrom:
             - configMapRef:
                 name: posthog-env
+            - secretRef:
+                name: posthog-postgres-secret
+            - secretRef:
+                name: posthog-objectstorage-secret
           env:
             - name: PLUGIN_SERVER_MODE
               value: ingestion-traces
-            - name: TRACES_REDIS_HOST
-              value: redis7
 ---
 # ── Rust microservices ────────────────────────────────────────────────────────
 apiVersion: apps/v1
@@ -1457,13 +1534,25 @@ spec:
               mountPath: /share
           env:
             - name: WRITE_DATABASE_URL
-              value: postgres://posthog:posthog@db:5432/posthog
+              valueFrom:
+                secretKeyRef:
+                  name: posthog-postgres-secret
+                  key: WRITE_DATABASE_URL
             - name: READ_DATABASE_URL
-              value: postgres://posthog:posthog@db:5432/posthog
+              valueFrom:
+                secretKeyRef:
+                  name: posthog-postgres-secret
+                  key: READ_DATABASE_URL
             - name: PERSONS_WRITE_DATABASE_URL
-              value: postgres://posthog:posthog@db:5432/posthog
+              valueFrom:
+                secretKeyRef:
+                  name: posthog-postgres-secret
+                  key: PERSONS_WRITE_DATABASE_URL
             - name: PERSONS_READ_DATABASE_URL
-              value: postgres://posthog:posthog@db:5432/posthog
+              valueFrom:
+                secretKeyRef:
+                  name: posthog-postgres-secret
+                  key: PERSONS_READ_DATABASE_URL
             - name: REDIS_URL
               value: redis://redis7:6379/
             - name: ADDRESS
@@ -1501,8 +1590,7 @@ metadata:
   name: property-defs-rs
   namespace: posthog
 spec:
-  # Not required for initial event capture/UI bring-up.
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: posthog-property-defs-rs
@@ -1511,12 +1599,19 @@ spec:
       labels:
         app: posthog-property-defs-rs
     spec:
+      initContainers:
+        - name: wait-for-clickhouse-events-topic
+          image: apache/kafka:3.7.0
+          command: [sh, -c, "until /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --topic clickhouse_events_json --describe >/dev/null 2>&1; do sleep 5; done"]
       containers:
         - name: property-defs-rs
           image: ghcr.io/posthog/posthog/property-defs-rs@sha256:1e818f48244ac9841eecda54efd881bd4ca1990d953329ef84ec1625d3d3e7fd
           env:
             - name: DATABASE_URL
-              value: postgres://posthog:posthog@db:5432/posthog
+              valueFrom:
+                secretKeyRef:
+                  name: posthog-postgres-secret
+                  key: DATABASE_URL
             - name: KAFKA_HOSTS
               value: kafka:9092
             - name: SKIP_WRITES
@@ -1532,8 +1627,7 @@ metadata:
   name: cyclotron-janitor
   namespace: posthog
 spec:
-  # Not required for initial event capture/UI bring-up.
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: posthog-cyclotron-janitor
@@ -1542,12 +1636,25 @@ spec:
       labels:
         app: posthog-cyclotron-janitor
     spec:
+      initContainers:
+        - name: wait-for-cyclotron-db
+          image: postgres:15-alpine
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: posthog-postgres-secret
+                  key: PGPASSWORD
+          command: [sh, -c, "until psql -h db -U posthog -d cyclotron -c 'SELECT 1' >/dev/null 2>&1; do sleep 5; done"]
       containers:
         - name: cyclotron-janitor
           image: ghcr.io/posthog/posthog/cyclotron-janitor@sha256:71790ce6594d119002db0d4b518d02855b99df154a7a69a363e6b80db8bfbe70
           env:
             - name: DATABASE_URL
-              value: postgres://posthog:posthog@db:5432/cyclotron
+              valueFrom:
+                secretKeyRef:
+                  name: posthog-postgres-secret
+                  key: CYCLOTRON_DATABASE_URL
             - name: KAFKA_HOSTS
               value: kafka:9092
             - name: KAFKA_TOPIC
