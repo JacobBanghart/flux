@@ -15,12 +15,12 @@ data:
     consumers:
       event:
         brokers: "kafka:9092"
-        topic: "clickhouse_events_json"
+        topic: "events_plugin_ingestion"
         security_protocol: PLAINTEXT
         group_id: "livestream"
       session_recording:
         brokers: "kafka:9092"
-        topic: "session_recording_events"
+        topic: "session_recording_snapshot_item_events"
         security_protocol: PLAINTEXT
         group_id: "livestream-session"
 ---
@@ -198,10 +198,11 @@ data:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: postgres-data
+  name: posthog-postgres-data
   namespace: posthog
 spec:
   accessModes: [ReadWriteOnce]
+  storageClassName: nfs-rwx
   resources:
     requests:
       storage: 20Gi
@@ -209,10 +210,11 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: redis-data
+  name: posthog-redis-data
   namespace: posthog
 spec:
   accessModes: [ReadWriteOnce]
+  storageClassName: nfs-rwx
   resources:
     requests:
       storage: 2Gi
@@ -220,10 +222,11 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: clickhouse-data
+  name: posthog-clickhouse-data
   namespace: posthog
 spec:
   accessModes: [ReadWriteOnce]
+  storageClassName: nfs-rwx
   resources:
     requests:
       storage: 50Gi
@@ -231,10 +234,11 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: zookeeper-data
+  name: posthog-zookeeper-data
   namespace: posthog
 spec:
   accessModes: [ReadWriteOnce]
+  storageClassName: nfs-rwx
   resources:
     requests:
       storage: 5Gi
@@ -242,10 +246,11 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: kafka-data
+  name: posthog-kafka-data
   namespace: posthog
 spec:
   accessModes: [ReadWriteOnce]
+  storageClassName: nfs-rwx
   resources:
     requests:
       storage: 20Gi
@@ -253,10 +258,11 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: objectstorage-data
+  name: posthog-objectstorage-data
   namespace: posthog
 spec:
   accessModes: [ReadWriteOnce]
+  storageClassName: nfs-rwx
   resources:
     requests:
       storage: 20Gi
@@ -264,10 +270,11 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: seaweedfs-data
+  name: posthog-seaweedfs-data
   namespace: posthog
 spec:
   accessModes: [ReadWriteOnce]
+  storageClassName: nfs-rwx
   resources:
     requests:
       storage: 20Gi
@@ -314,7 +321,7 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: postgres-data
+            claimName: posthog-postgres-data
         - name: init-scripts
           configMap:
             name: postgres-init-scripts
@@ -365,7 +372,7 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: redis-data
+            claimName: posthog-redis-data
 ---
 apiVersion: v1
 kind: Service
@@ -409,7 +416,7 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: zookeeper-data
+            claimName: posthog-zookeeper-data
 ---
 apiVersion: v1
 kind: Service
@@ -469,7 +476,7 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: clickhouse-data
+            claimName: posthog-clickhouse-data
         - name: config
           configMap:
             name: clickhouse-config
@@ -480,6 +487,7 @@ metadata:
   name: clickhouse
   namespace: posthog
 spec:
+  clusterIP: None
   selector:
     app: posthog-clickhouse
   ports:
@@ -552,7 +560,7 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: kafka-data
+            claimName: posthog-kafka-data
 ---
 apiVersion: v1
 kind: Service
@@ -607,7 +615,7 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: objectstorage-data
+            claimName: posthog-objectstorage-data
 ---
 apiVersion: v1
 kind: Service
@@ -660,7 +668,7 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: seaweedfs-data
+            claimName: posthog-seaweedfs-data
 ---
 apiVersion: v1
 kind: Service
@@ -753,7 +761,7 @@ spec:
           image: postgres:15-alpine
           command: [sh, -c, until pg_isready -h db -U posthog; do sleep 2; done]
         - name: wait-for-es
-          image: curlimages/curl:latest
+          image: curlimages/curl@sha256:c03110c736db81bbe1be0296f1f1608c81b954b01626bdfb0a8f84e5bd00ff3c
           command: [sh, -c, "until curl -sf http://elasticsearch:9200/_cluster/health; do sleep 5; done"]
       containers:
         - name: temporal
@@ -855,14 +863,14 @@ spec:
           image: postgres:15-alpine
           command: [sh, -c, until pg_isready -h db -U posthog; do sleep 2; done]
         - name: wait-for-clickhouse
-          image: curlimages/curl:latest
+          image: curlimages/curl@sha256:c03110c736db81bbe1be0296f1f1608c81b954b01626bdfb0a8f84e5bd00ff3c
           command: [sh, -c, "until curl -sf http://clickhouse:8123/ping; do sleep 5; done"]
         - name: wait-for-kafka
           image: busybox:1.36
           command: [sh, -c, "until nc -z kafka 9092; do echo waiting for kafka; sleep 5; done"]
       containers:
         - name: migrate
-          image: posthog/posthog-foss:latest-release
+          image: posthog/posthog-foss@sha256:225e45c1c586c63532184a5eb9f4ba70cd5d3d60977579d46bcbe7f6021e699d
           command: [sh, -c]
           args:
             - python manage.py migrate && python manage.py migrate_clickhouse && python manage.py run_async_migrations
@@ -939,7 +947,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: posthog/posthog-foss:latest-release
+          image: posthog/posthog-foss@sha256:225e45c1c586c63532184a5eb9f4ba70cd5d3d60977579d46bcbe7f6021e699d
           command: [./bin/start-backend]
           envFrom:
             - configMapRef:
@@ -994,7 +1002,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: posthog/posthog-foss:latest-release
+          image: posthog/posthog-foss@sha256:225e45c1c586c63532184a5eb9f4ba70cd5d3d60977579d46bcbe7f6021e699d
           command: [./bin/docker-worker-celery, --with-scheduler]
           envFrom:
             - configMapRef:
@@ -1029,7 +1037,7 @@ spec:
     spec:
       containers:
         - name: temporal-django-worker
-          image: posthog/posthog-foss:latest-release
+          image: posthog/posthog-foss@sha256:225e45c1c586c63532184a5eb9f4ba70cd5d3d60977579d46bcbe7f6021e699d
           command: [./bin/temporal-django-worker]
           envFrom:
             - configMapRef:
@@ -1064,7 +1072,7 @@ spec:
     spec:
       containers:
         - name: plugins
-          image: ghcr.io/posthog/posthog-node:latest
+          image: ghcr.io/posthog/posthog-node@sha256:6ff3917f9801c58a020eb1bc8590e4668b32d220da495357306021d41acdc228
           command: [node, nodejs/dist/index.js]
           envFrom:
             - configMapRef:
@@ -1107,7 +1115,7 @@ spec:
     spec:
       containers:
         - name: ingestion-general
-          image: ghcr.io/posthog/posthog-node:latest
+          image: ghcr.io/posthog/posthog-node@sha256:6ff3917f9801c58a020eb1bc8590e4668b32d220da495357306021d41acdc228
           command: [node, nodejs/dist/index.js]
           envFrom:
             - configMapRef:
@@ -1138,7 +1146,7 @@ spec:
     spec:
       containers:
         - name: ingestion-sessionreplay
-          image: ghcr.io/posthog/posthog-node:latest
+          image: ghcr.io/posthog/posthog-node@sha256:6ff3917f9801c58a020eb1bc8590e4668b32d220da495357306021d41acdc228
           command: [node, nodejs/dist/index.js]
           envFrom:
             - configMapRef:
@@ -1169,7 +1177,7 @@ spec:
     spec:
       containers:
         - name: recording-api
-          image: ghcr.io/posthog/posthog-node:latest
+          image: ghcr.io/posthog/posthog-node@sha256:6ff3917f9801c58a020eb1bc8590e4668b32d220da495357306021d41acdc228
           command: [node, nodejs/dist/index.js]
           envFrom:
             - configMapRef:
@@ -1212,7 +1220,7 @@ spec:
     spec:
       containers:
         - name: ingestion-error-tracking
-          image: ghcr.io/posthog/posthog-node:latest
+          image: ghcr.io/posthog/posthog-node@sha256:6ff3917f9801c58a020eb1bc8590e4668b32d220da495357306021d41acdc228
           command: [node, nodejs/dist/index.js]
           envFrom:
             - configMapRef:
@@ -1243,7 +1251,7 @@ spec:
     spec:
       containers:
         - name: ingestion-logs
-          image: ghcr.io/posthog/posthog-node:latest
+          image: ghcr.io/posthog/posthog-node@sha256:6ff3917f9801c58a020eb1bc8590e4668b32d220da495357306021d41acdc228
           command: [node, nodejs/dist/index.js]
           envFrom:
             - configMapRef:
@@ -1271,7 +1279,7 @@ spec:
     spec:
       containers:
         - name: ingestion-traces
-          image: ghcr.io/posthog/posthog-node:latest
+          image: ghcr.io/posthog/posthog-node@sha256:6ff3917f9801c58a020eb1bc8590e4668b32d220da495357306021d41acdc228
           command: [node, nodejs/dist/index.js]
           envFrom:
             - configMapRef:
@@ -1300,7 +1308,7 @@ spec:
     spec:
       containers:
         - name: capture
-          image: ghcr.io/posthog/posthog/capture:master
+          image: ghcr.io/posthog/posthog/capture@sha256:43679601bc20727c454a8c1eb9e311cff232a60fdfb53ced679276687eaa9427
           env:
             - name: ADDRESS
               value: "0.0.0.0:3000"
@@ -1345,7 +1353,7 @@ spec:
     spec:
       containers:
         - name: replay-capture
-          image: ghcr.io/posthog/posthog/capture:master
+          image: ghcr.io/posthog/posthog/capture@sha256:43679601bc20727c454a8c1eb9e311cff232a60fdfb53ced679276687eaa9427
           env:
             - name: ADDRESS
               value: "0.0.0.0:3000"
@@ -1388,7 +1396,7 @@ spec:
     spec:
       initContainers:
         - name: copy-geoip
-          image: ghcr.io/posthog/posthog/feature-flags:master
+          image: ghcr.io/posthog/posthog/feature-flags@sha256:2b925bd020e1b4444378bb15d3c8acaea08f5b452d5b1fe39a0dec4e90d4bdc1
           command: [sh, -c, "cp /app/share/GeoLite2-City.mmdb /share/GeoLite2-City.mmdb"]
           volumeMounts:
             - name: share
@@ -1398,7 +1406,7 @@ spec:
           emptyDir: {}
       containers:
         - name: feature-flags
-          image: ghcr.io/posthog/posthog/feature-flags:master
+          image: ghcr.io/posthog/posthog/feature-flags@sha256:2b925bd020e1b4444378bb15d3c8acaea08f5b452d5b1fe39a0dec4e90d4bdc1
           volumeMounts:
             - name: share
               mountPath: /share
@@ -1459,7 +1467,7 @@ spec:
     spec:
       containers:
         - name: property-defs-rs
-          image: ghcr.io/posthog/posthog/property-defs-rs:master
+          image: ghcr.io/posthog/posthog/property-defs-rs@sha256:1e818f48244ac9841eecda54efd881bd4ca1990d953329ef84ec1625d3d3e7fd
           env:
             - name: DATABASE_URL
               value: postgres://posthog:posthog@db:5432/posthog
@@ -1489,7 +1497,7 @@ spec:
     spec:
       containers:
         - name: cyclotron-janitor
-          image: ghcr.io/posthog/posthog/cyclotron-janitor:master
+          image: ghcr.io/posthog/posthog/cyclotron-janitor@sha256:71790ce6594d119002db0d4b518d02855b99df154a7a69a363e6b80db8bfbe70
           env:
             - name: DATABASE_URL
               value: postgres://posthog:posthog@db:5432/cyclotron
@@ -1515,14 +1523,14 @@ spec:
     spec:
       initContainers:
         - name: copy-geoip
-          image: ghcr.io/posthog/posthog/feature-flags:master
+          image: ghcr.io/posthog/posthog/feature-flags@sha256:2b925bd020e1b4444378bb15d3c8acaea08f5b452d5b1fe39a0dec4e90d4bdc1
           command: ["sh", "-c", "cp /app/share/GeoLite2-City.mmdb /geoip/GeoLite2-City.mmdb"]
           volumeMounts:
             - name: geoip
               mountPath: /geoip
       containers:
         - name: livestream
-          image: ghcr.io/posthog/posthog/livestream:master
+          image: ghcr.io/posthog/posthog/livestream@sha256:2a6630500816bbc477aaa795e5c3ec8f824e03516c189e85ca9afedddf8ac407
           env:
             - name: KAFKA_HOSTS
               value: kafka:9092
@@ -1554,8 +1562,8 @@ spec:
     - port: 8080
 ---
 # ── Ingress ───────────────────────────────────────────────────────────────────
-# Routes: /s/* → replay-capture:3000, /flags/* → feature-flags:3001,
-#         /e /i /batch /capture → capture:3000, everything else → web:8000
+# Minimal external surface: UI on /, feature flags on /flags, event ingestion on
+# /e, /i, /batch, and /capture.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -1570,6 +1578,41 @@ spec:
     - host: posthog.backtosafety.app
       http:
         paths:
+          - path: /flags
+            pathType: Prefix
+            backend:
+              service:
+                name: feature-flags
+                port:
+                  number: 3001
+          - path: /e
+            pathType: Prefix
+            backend:
+              service:
+                name: capture
+                port:
+                  number: 3000
+          - path: /i
+            pathType: Prefix
+            backend:
+              service:
+                name: capture
+                port:
+                  number: 3000
+          - path: /batch
+            pathType: Prefix
+            backend:
+              service:
+                name: capture
+                port:
+                  number: 3000
+          - path: /capture
+            pathType: Prefix
+            backend:
+              service:
+                name: capture
+                port:
+                  number: 3000
           - path: /
             pathType: Prefix
             backend:
