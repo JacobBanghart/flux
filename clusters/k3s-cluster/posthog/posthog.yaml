@@ -1601,6 +1601,53 @@ spec:
   ports:
     - port: 3001
 ---
+# Hypercache server for remote config (/array/* endpoint)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hypercache
+  namespace: posthog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: posthog-hypercache
+  template:
+    metadata:
+      labels:
+        app: posthog-hypercache
+    spec:
+      containers:
+        - name: hypercache
+          image: ghcr.io/posthog/posthog/hypercache-server@sha256:2b925bd020e1b4444378bb15d3c8acaea08f5b452d5b1fe39a0dec4e90d4bdc1
+          env:
+            - name: REDIS_URL
+              value: redis://redis7:6379/
+            - name: ADDRESS
+              value: "0.0.0.0:3002"
+            - name: RUST_LOG
+              value: info
+          ports:
+            - containerPort: 3002
+          readinessProbe:
+            httpGet:
+              path: /_readiness
+              port: 3002
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 12
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hypercache
+  namespace: posthog
+spec:
+  selector:
+    app: posthog-hypercache
+  ports:
+    - port: 3002
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1829,9 +1876,9 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: capture
+                name: hypercache
                 port:
-                  number: 3000
+                  number: 3002
           - path: /
             pathType: Prefix
             backend:
