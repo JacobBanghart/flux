@@ -1641,6 +1641,10 @@ spec:
                 secretKeyRef:
                   name: posthog-objectstorage-secret
                   key: MINIO_ROOT_PASSWORD
+            - name: S3_REGION
+              value: us-east-1
+            - name: S3_FORCE_PATH_STYLE
+              value: "true"
           ports:
             - containerPort: 3002
           readinessProbe:
@@ -1807,6 +1811,17 @@ spec:
     replacement: https://posthog.backtosafety.app/
     permanent: false
 ---
+# Middleware to set X-Forwarded-Proto header for proper proxy handling
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: secure-headers
+  namespace: posthog
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Proto: "https"
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -1838,6 +1853,7 @@ metadata:
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls.certresolver: cloudflare
+    traefik.ingress.kubernetes.io/router.middlewares: posthog-secure-headers@kubernetescrd
 spec:
   ingressClassName: traefik
   rules:
