@@ -1046,6 +1046,9 @@ spec:
             # Allow local Expo web dev to access PostHog API
             - name: CORS_ALLOWED_ORIGINS
               value: "https://posthog.backtosafety.app,http://localhost:8081,http://localhost:19006"
+            # Allow anonymous access to array endpoint (fixes mobile SDK auth issues)
+            - name: LOGIN_REQUIRED_FOR_POSTHOG
+              value: "False"
           ports:
             - containerPort: 8000
           readinessProbe:
