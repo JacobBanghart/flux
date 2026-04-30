@@ -1627,6 +1627,20 @@ spec:
               value: "0.0.0.0:3002"
             - name: RUST_LOG
               value: info
+            - name: S3_BUCKET
+              value: posthog
+            - name: S3_ENDPOINT
+              value: http://objectstorage:19000
+            - name: S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: posthog-objectstorage-secret
+                  key: MINIO_ROOT_USER
+            - name: S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: posthog-objectstorage-secret
+                  key: MINIO_ROOT_PASSWORD
           ports:
             - containerPort: 3002
           readinessProbe:
