@@ -1020,7 +1020,7 @@ spec:
           image: posthog/posthog-foss@sha256:225e45c1c586c63532184a5eb9f4ba70cd5d3d60977579d46bcbe7f6021e699d
           command: [sh, -c]
           args:
-            - ./bin/migrate-check && python3 manage.py runserver 0.0.0.0:8000
+            - ./bin/migrate-check && gunicorn posthog.wsgi:application --bind 0.0.0.0:8000 --workers 2 --threads 2
           envFrom:
             - configMapRef:
                 name: posthog-env
@@ -1813,6 +1813,13 @@ spec:
             backend:
               service:
                 name: capture
+                port:
+                  number: 3000
+          - path: /s
+            pathType: Prefix
+            backend:
+              service:
+                name: replay-capture
                 port:
                   number: 3000
           - path: /
