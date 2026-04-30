@@ -1619,7 +1619,7 @@ spec:
     spec:
       containers:
         - name: hypercache
-          image: ghcr.io/posthog/posthog/hypercache-server@sha256:2b925bd020e1b4444378bb15d3c8acaea08f5b452d5b1fe39a0dec4e90d4bdc1
+          image: ghcr.io/posthog/posthog/hypercache-server:master
           env:
             - name: REDIS_URL
               value: redis://redis7:6379/
