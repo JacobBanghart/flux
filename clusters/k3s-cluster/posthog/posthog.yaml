@@ -1043,6 +1043,9 @@ spec:
               value: "true"
             - name: TRUST_ALL_PROXIES
               value: "true"
+            # Allow local Expo web dev to access PostHog API
+            - name: CORS_ALLOWED_ORIGINS
+              value: "https://posthog.backtosafety.app,http://localhost:8081,http://localhost:19006"
           ports:
             - containerPort: 8000
           readinessProbe:
@@ -1206,7 +1209,8 @@ metadata:
   name: ingestion-general
   namespace: posthog
 spec:
-  replicas: 1
+  # Disabled pending PostHog node-service/schema version alignment.
+  replicas: 0
   selector:
     matchLabels:
       app: posthog-ingestion-general
@@ -1358,7 +1362,8 @@ metadata:
   name: ingestion-logs
   namespace: posthog
 spec:
-  replicas: 1
+  # Disabled pending PostHog logs/traces Redis stability investigation.
+  replicas: 0
   selector:
     matchLabels:
       app: posthog-ingestion-logs
@@ -1381,6 +1386,10 @@ spec:
           env:
             - name: PLUGIN_SERVER_MODE
               value: ingestion-logs
+            - name: LOGS_REDIS_HOST
+              value: redis7
+            - name: LOGS_REDIS_PORT
+              value: "6379"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -1388,7 +1397,8 @@ metadata:
   name: ingestion-traces
   namespace: posthog
 spec:
-  replicas: 1
+  # Disabled pending PostHog logs/traces Redis stability investigation.
+  replicas: 0
   selector:
     matchLabels:
       app: posthog-ingestion-traces
@@ -1411,6 +1421,10 @@ spec:
           env:
             - name: PLUGIN_SERVER_MODE
               value: ingestion-traces
+            - name: TRACES_REDIS_HOST
+              value: redis7
+            - name: TRACES_REDIS_PORT
+              value: "6379"
 ---
 # ── Rust microservices ────────────────────────────────────────────────────────
 apiVersion: apps/v1
