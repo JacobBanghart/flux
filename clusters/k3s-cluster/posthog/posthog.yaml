@@ -1049,6 +1049,9 @@ spec:
             # Allow anonymous access to array endpoint (fixes mobile SDK auth issues)
             - name: LOGIN_REQUIRED_FOR_POSTHOG
               value: "False"
+            # Disable SSL redirect to fix static file serving behind proxy
+            - name: DISABLE_SECURE_SSL_REDIRECT
+              value: "True"
           ports:
             - containerPort: 8000
           readinessProbe:
