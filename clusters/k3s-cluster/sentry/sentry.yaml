@@ -581,7 +581,7 @@ spec:
         traefik.ingress.kubernetes.io/router.tls.certresolver: cloudflare
 
     nginx:
-      enabled: false
+      enabled: true
 
     clickhouse:
       enabled: false
