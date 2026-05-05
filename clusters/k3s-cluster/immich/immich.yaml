@@ -78,6 +78,13 @@ spec:
           main:
             image:
               tag: v2.3.1
+            resources:
+              requests:
+                memory: "512Mi"
+                cpu: "250m"
+              limits:
+                memory: "2Gi"
+                cpu: "2000m"
             env:
               # PostgreSQL service name
               DB_HOSTNAME: postgresql
@@ -109,7 +116,31 @@ spec:
     # postgresql and redis subcharts removed in 0.10.0+
     # Using external PostgreSQL from postgresql.yaml and valkey (Redis replacement)
     valkey:
-      enabled: true # Enable valkey (Redis replacement) for Immich
+      enabled: true
+      controllers:
+        main:
+          containers:
+            main:
+              resources:
+                requests:
+                  memory: "64Mi"
+                  cpu: "50m"
+                limits:
+                  memory: "256Mi"
+                  cpu: "500m"
+    machine-learning:
+      enabled: true
+      controllers:
+        main:
+          containers:
+            main:
+              resources:
+                requests:
+                  memory: "512Mi"
+                  cpu: "250m"
+                limits:
+                  memory: "4Gi"
+                  cpu: "2000m"
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
