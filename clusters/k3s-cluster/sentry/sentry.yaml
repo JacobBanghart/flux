@@ -228,6 +228,15 @@ spec:
     sentry:
       existingSecret: sentry-secret
       existingSecretKey: my-secret-key
+      mail:
+        host: smtp.resend.com
+        port: "587"
+        username: resend
+        password:
+          existingSecret: sentry-secret
+          existingSecretKey: smtp-password
+        from: noreply@backtosafety.app
+        useTls: true
       web:
         strategyType: Recreate
         resources:
