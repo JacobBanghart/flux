@@ -139,7 +139,21 @@ spec:
       enabled: false
 
     clickhouse:
-      enabled: false
+      enabled: true
+      fullnameOverride: clickhouse-openreplay-clickhouse
+      image:
+        repository: clickhouse/clickhouse-server
+        tag: "25.9-alpine"
+      resources:
+        requests:
+          memory: "256Mi"
+          cpu: "100m"
+        limits:
+          memory: "2Gi"
+          cpu: "1"
+      persistence:
+        storageClass: nfs-rwx
+        size: 50Gi
 
     vault:
       enabled: false
@@ -218,11 +232,11 @@ spec:
         redisHost: "redis-master.openreplay.svc.cluster.local"
         redisPort: "6379"
       clickhouse:
-        enabled: false
-        existingSecret: openreplay-secret
+        enabled: true
         chHost: clickhouse-openreplay-clickhouse.openreplay.svc.cluster.local
         username: default
         password: ""
+        use_tls: false
         service:
           webPort: 8123
           dataPort: 9000
