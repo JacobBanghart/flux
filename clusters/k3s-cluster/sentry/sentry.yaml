@@ -729,6 +729,24 @@ spec:
           - name: post-process-forward-issue-platform
             partitions: 1
             replicationFactor: 1
+          - name: ingest-performance-metrics
+            partitions: 1
+            replicationFactor: 1
+          - name: ingest-metrics
+            partitions: 1
+            replicationFactor: 1
+          - name: ingest-spans
+            partitions: 1
+            replicationFactor: 1
+          - name: ingest-feedback-events
+            partitions: 1
+            replicationFactor: 1
+          - name: monitors-clock-tasks
+            partitions: 1
+            replicationFactor: 1
+          - name: buffered-segments
+            partitions: 1
+            replicationFactor: 1
       extraConfigYaml:
         default.replication.factor: 1
         min.insync.replicas: 1
