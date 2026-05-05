@@ -160,6 +160,12 @@ spec:
 
     global:
       domainName: openreplay.jacobbanghart.com
+      ingress:
+        controller:
+          service:
+            ports:
+              http: 80
+              https: 443
       pvcRWXName: nfs-rwx
       ORSecureAccess: true
       openReplayContainerRegistry: "public.ecr.aws/p1t3u8a3"
