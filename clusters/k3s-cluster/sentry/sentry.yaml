@@ -668,6 +668,67 @@ spec:
       enabled: true
       provisioning:
         replicationFactor: 1
+        topics:
+          - name: taskworker
+            partitions: 1
+            replicationFactor: 1
+          - name: taskworker-ingest
+            partitions: 1
+            replicationFactor: 1
+          - name: taskworker-long
+            partitions: 1
+            replicationFactor: 1
+          - name: taskworker-products
+            partitions: 1
+            replicationFactor: 1
+          - name: ingest-events
+            partitions: 1
+            replicationFactor: 1
+          - name: ingest-transactions
+            partitions: 1
+            replicationFactor: 1
+          - name: ingest-attachments
+            partitions: 1
+            replicationFactor: 1
+          - name: ingest-replay-recordings
+            partitions: 1
+            replicationFactor: 1
+          - name: ingest-occurrences
+            partitions: 1
+            replicationFactor: 1
+          - name: ingest-feedback
+            partitions: 1
+            replicationFactor: 1
+          - name: ingest-monitors
+            partitions: 1
+            replicationFactor: 1
+          - name: profiles
+            partitions: 1
+            replicationFactor: 1
+          - name: metrics
+            partitions: 1
+            replicationFactor: 1
+          - name: generic-metrics
+            partitions: 1
+            replicationFactor: 1
+          - name: subscriptions
+            partitions: 1
+            replicationFactor: 1
+          - name: snuba-commit-logs
+            partitions: 1
+            replicationFactor: 1
+          - name: eventstream
+            partitions: 1
+            replicationFactor: 1
+          - name: post-process-forward-errors
+            partitions: 1
+            replicationFactor: 1
+          - name: post-process-forward-transactions
+            partitions: 1
+            replicationFactor: 1
+          - name: post-process-forward-issue-platform
+            partitions: 1
+            replicationFactor: 1
       extraConfigYaml:
         default.replication.factor: 1
         min.insync.replicas: 1
