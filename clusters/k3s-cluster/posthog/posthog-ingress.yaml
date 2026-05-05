@@ -35,7 +35,7 @@ metadata:
   namespace: posthog
 spec:
   rules:
-    - host: posthog.jacobbanghart.com
+    - host: posthog.backtosafety.app
       http:
         paths:
           - pathType: Prefix
@@ -77,7 +77,7 @@ metadata:
   namespace: posthog
 spec:
   rules:
-    - host: temporal.jacobbanghart.com
+    - host: temporal.backtosafety.app
       http:
         paths:
           - pathType: Prefix
