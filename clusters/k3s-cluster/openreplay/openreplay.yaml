@@ -319,6 +319,8 @@ spec:
           memory: "1Gi"
           cpu: "1"
 
+    fromVersion: "v1.27.0"
+
     migration:
       env:
         SKIP_PERMISSION_CHANGE: "false"
