@@ -117,10 +117,10 @@ spec:
                 - ALL
           resources:
             requests:
-              cpu: "100m"
-              memory: "128Mi"
+              cpu: "200m"
+              memory: "256Mi"
             limits:
-              memory: "4Gi"
+              memory: "8Gi"
               cpu: "4"
           ports:
             - containerPort: 8096

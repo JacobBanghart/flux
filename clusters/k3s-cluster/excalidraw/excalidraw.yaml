@@ -25,11 +25,11 @@ spec:
           image: excalidraw/excalidraw:sha-4bfc5bb
           resources:
             requests:
-              cpu: "100m"
-              memory: "128Mi"
+              cpu: "200m"
+              memory: "256Mi"
             limits:
-              memory: "512Mi"
-              cpu: "500m"
+              memory: "1024Mi"
+              cpu: "1000m"
           ports:
             - containerPort: 80
           livenessProbe:

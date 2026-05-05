@@ -85,11 +85,11 @@ spec:
               subPath: users_experimental.xml
           resources:
             requests:
-              memory: "1Gi"
-              cpu: "500m"
+              memory: "2Gi"
+              cpu: "1000m"
             limits:
-              memory: "4Gi"
-              cpu: "2000m"
+              memory: "8Gi"
+              cpu: "4000m"
           readinessProbe:
             httpGet:
               path: /ping
@@ -173,403 +173,403 @@ spec:
         strategyType: Recreate
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "250m"
+            memory: "512Mi"
+            cpu: "500m"
           limits:
-            memory: "1Gi"
-            cpu: "1000m"
+            memory: "2Gi"
+            cpu: "2000m"
       worker:
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "250m"
+            memory: "512Mi"
+            cpu: "500m"
           limits:
-            memory: "1Gi"
-            cpu: "1000m"
+            memory: "2Gi"
+            cpu: "2000m"
       cron:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       ingestConsumerAttachments:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       ingestConsumerEvents:
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "250m"
+            memory: "512Mi"
+            cpu: "500m"
           limits:
-            memory: "1Gi"
-            cpu: "1000m"
+            memory: "2Gi"
+            cpu: "2000m"
       ingestConsumerTransactions:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       ingestReplayRecordings:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       ingestOccurrences:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       ingestFeedback:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       ingestMonitors:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       ingestProfiles:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       billingMetricsConsumer:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
             memory: "256Mi"
-            cpu: "250m"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
       genericMetricsConsumer:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       metricsConsumer:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       monitorsClockTasks:
         resources:
           requests:
-            memory: "64Mi"
-            cpu: "50m"
+            memory: "128Mi"
+            cpu: "100m"
           limits:
-            memory: "256Mi"
-            cpu: "250m"
+            memory: "512Mi"
+            cpu: "500m"
       monitorsClockTick:
         resources:
           requests:
-            memory: "64Mi"
-            cpu: "50m"
+            memory: "128Mi"
+            cpu: "100m"
           limits:
-            memory: "256Mi"
-            cpu: "250m"
+            memory: "512Mi"
+            cpu: "500m"
       postProcessForwardErrors:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       postProcessForwardTransactions:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       postProcessForwardIssuePlatform:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       processSegments:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       processSpans:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       subscriptionConsumerEvents:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       subscriptionConsumerTransactions:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       subscriptionConsumerMetrics:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       subscriptionConsumerGenericMetrics:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
 
     uptimeResults:
       resources:
         requests:
-          memory: "64Mi"
-          cpu: "50m"
+          memory: "128Mi"
+          cpu: "100m"
         limits:
-          memory: "256Mi"
-          cpu: "250m"
+          memory: "512Mi"
+          cpu: "500m"
 
     taskBroker:
       resources:
         requests:
-          memory: "128Mi"
-          cpu: "100m"
+          memory: "256Mi"
+          cpu: "200m"
         limits:
-          memory: "512Mi"
-          cpu: "500m"
+          memory: "1024Mi"
+          cpu: "1000m"
 
     taskScheduler:
       resources:
         requests:
-          memory: "128Mi"
-          cpu: "100m"
+          memory: "256Mi"
+          cpu: "200m"
         limits:
-          memory: "512Mi"
-          cpu: "1000m"
+          memory: "1024Mi"
+          cpu: "2000m"
 
     taskWorker:
       resources:
         requests:
-          memory: "128Mi"
-          cpu: "100m"
+          memory: "256Mi"
+          cpu: "200m"
         limits:
-          memory: "512Mi"
-          cpu: "500m"
+          memory: "1024Mi"
+          cpu: "1000m"
 
     snuba:
       api:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       consumer:
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "250m"
+            memory: "512Mi"
+            cpu: "500m"
           limits:
-            memory: "1Gi"
-            cpu: "1000m"
+            memory: "2Gi"
+            cpu: "2000m"
       eapItemsConsumer:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       outcomesConsumer:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       outcomesBillingConsumer:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
             memory: "256Mi"
-            cpu: "250m"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
       replacer:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       metricsConsumer:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       genericMetricsGaugesConsumer:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       genericMetricsCountersConsumer:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       genericMetricsDistributionConsumer:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       genericMetricsSetsConsumer:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       replaysConsumer:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       transactionsConsumer:
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "250m"
+            memory: "512Mi"
+            cpu: "500m"
           limits:
-            memory: "1Gi"
-            cpu: "1000m"
+            memory: "2Gi"
+            cpu: "2000m"
       profilingProfilesConsumer:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       profilingFunctionsConsumer:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       profilingChunksConsumer:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       issueOccurrenceConsumer:
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "1024Mi"
+            cpu: "1000m"
       groupAttributesConsumer:
         resources:
           requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "1024Mi"
+            cpu: "1000m"
+      cleanup:
+        resources:
+          requests:
             memory: "128Mi"
             cpu: "100m"
           limits:
             memory: "512Mi"
             cpu: "500m"
-      cleanup:
-        resources:
-          requests:
-            memory: "64Mi"
-            cpu: "50m"
-          limits:
-            memory: "256Mi"
-            cpu: "250m"
 
     relay:
       strategyType: Recreate
       resources:
         requests:
-          memory: "128Mi"
-          cpu: "100m"
+          memory: "256Mi"
+          cpu: "200m"
         limits:
-          memory: "512Mi"
-          cpu: "500m"
+          memory: "1024Mi"
+          cpu: "1000m"
 
     ingress:
       enabled: true
@@ -603,11 +603,11 @@ spec:
       primary:
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "250m"
+            memory: "512Mi"
+            cpu: "500m"
           limits:
-            memory: "1Gi"
-            cpu: "1000m"
+            memory: "2Gi"
+            cpu: "2000m"
         persistence:
           enabled: true
           size: 20Gi
@@ -620,49 +620,49 @@ spec:
           storageClass: nfs-rwx
         resources:
           requests:
-            memory: "64Mi"
-            cpu: "50m"
+            memory: "128Mi"
+            cpu: "100m"
           limits:
-            memory: "256Mi"
-            cpu: "500m"
+            memory: "512Mi"
+            cpu: "1000m"
 
     symbolicator:
       resources:
         requests:
-          memory: "128Mi"
-          cpu: "100m"
+          memory: "256Mi"
+          cpu: "200m"
         limits:
-          memory: "512Mi"
-          cpu: "500m"
+          memory: "1024Mi"
+          cpu: "1000m"
 
     vroom:
       resources:
         requests:
-          memory: "128Mi"
-          cpu: "100m"
+          memory: "256Mi"
+          cpu: "200m"
         limits:
-          memory: "512Mi"
-          cpu: "500m"
+          memory: "1024Mi"
+          cpu: "1000m"
 
     memcached:
       enabled: true
       resources:
         requests:
-          memory: "64Mi"
-          cpu: "50m"
+          memory: "128Mi"
+          cpu: "100m"
         limits:
-          memory: "256Mi"
-          cpu: "250m"
+          memory: "512Mi"
+          cpu: "500m"
 
     pgbouncer:
       enabled: true
       resources:
         requests:
-          memory: "64Mi"
-          cpu: "50m"
+          memory: "128Mi"
+          cpu: "100m"
         limits:
-          memory: "256Mi"
-          cpu: "250m"
+          memory: "512Mi"
+          cpu: "500m"
 
     kafka:
       enabled: true
@@ -742,8 +742,8 @@ spec:
           storageClass: nfs-rwx
         resources:
           requests:
-            memory: "512Mi"
-            cpu: "250m"
+            memory: "1024Mi"
+            cpu: "500m"
           limits:
-            memory: "2Gi"
-            cpu: "1000m"
+            memory: "4Gi"
+            cpu: "2000m"

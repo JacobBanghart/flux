@@ -123,11 +123,11 @@ spec:
         tag: "latest"
       resources:
         requests:
-          memory: "256Mi"
-          cpu: "250m"
+          memory: "512Mi"
+          cpu: "500m"
         limits:
-          memory: "1Gi"
-          cpu: "1000m"
+          memory: "2Gi"
+          cpu: "2000m"
     persistence:
       public:
         existingClaim: ivpublicpvc
@@ -143,11 +143,11 @@ spec:
           existingClaim: ivmariapvc
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "250m"
+            memory: "512Mi"
+            cpu: "500m"
           limits:
-            memory: "1Gi"
-            cpu: "1000m"
+            memory: "2Gi"
+            cpu: "2000m"
     redis:
       image:
         tag: "latest"
@@ -156,11 +156,11 @@ spec:
           tag: "latest"
       resources:
         requests:
-          memory: "64Mi"
-          cpu: "50m"
+          memory: "128Mi"
+          cpu: "100m"
         limits:
-          memory: "256Mi"
-          cpu: "500m"
+          memory: "512Mi"
+          cpu: "1000m"
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress

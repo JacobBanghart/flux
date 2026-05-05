@@ -106,8 +106,8 @@ spec:
               mountPath: /ssl-certs
     resources:
       requests:
-        memory: "128Mi"
-        cpu: "100m"
+        memory: "256Mi"
+        cpu: "200m"
       limits:
-        memory: "512Mi"
-        cpu: "1000m"
+        memory: "1024Mi"
+        cpu: "2000m"
