@@ -1,17 +1,20 @@
 # Flux CD GitOps Repository - Cursor Instructions
 
 ## Project Overview
+
 This is a Flux CD GitOps repository for managing a Kubernetes (k3s) cluster. The repository follows GitOps principles where all cluster configurations are version-controlled and automatically synced to the cluster.
 
 **⚠️ CRITICAL: This is a PUBLIC repository accessible to the entire world. This is a production homelab server.**
 
 ## Repository Structure
+
 - `clusters/k3s-cluster/` - Main cluster configuration directory
   - Each application/service has its own subdirectory (e.g., `portfolio/`, `next-cloud/`, `vault/`)
   - `flux-system/` - Contains Flux CD system components (DO NOT manually edit `gotk-sync.yaml` or `gotk-components.yaml` - these are auto-generated)
 - `scripts/` - Utility scripts for cluster management (e.g., vault initialization)
 
 ## Key Technologies
+
 - **Flux CD** - GitOps operator for Kubernetes
 - **Kubernetes** - Container orchestration (k3s distribution)
 - **Helm** - Package manager for Kubernetes
@@ -21,6 +24,7 @@ This is a Flux CD GitOps repository for managing a Kubernetes (k3s) cluster. The
 ## Coding Standards & Best Practices
 
 ### YAML Files
+
 - Always use 2-space indentation (never tabs)
 - Use consistent spacing and formatting
 - Include proper YAML document separators (`---`) between resources
@@ -34,6 +38,7 @@ This is a Flux CD GitOps repository for managing a Kubernetes (k3s) cluster. The
   7. Other resources (Ingress, Services, etc.)
 
 ### Flux CD Resources
+
 - **GitRepository**: Defines source repositories for syncing
 - **Kustomization**: Applies Kustomize overlays from GitRepository sources
 - **HelmRepository**: Defines Helm chart repositories
@@ -41,6 +46,7 @@ This is a Flux CD GitOps repository for managing a Kubernetes (k3s) cluster. The
 - **ImageRepository/ImagePolicy/ImageUpdateAutomation**: Manages container image updates
 
 ### Common Patterns
+
 - Applications typically have their own namespace
 - **Storage**: Use the `nfs-rwx` StorageClass for all NEW resources (dynamic provisioning)
   - Old pattern (legacy, being migrated): Static PersistentVolumes with `storageClassName: ""` and `volumeName: <specific-pv>`
@@ -52,6 +58,7 @@ This is a Flux CD GitOps repository for managing a Kubernetes (k3s) cluster. The
 - Image automation uses semver policies and Setters strategy
 
 ### Scripts
+
 - All bash scripts should start with `#!/usr/bin/env bash`
 - Use `set -euo pipefail` for error handling
 - Include comprehensive usage documentation in comments
@@ -61,6 +68,7 @@ This is a Flux CD GitOps repository for managing a Kubernetes (k3s) cluster. The
 ## 🔒 CRITICAL SECURITY RULES 🔒
 
 ### NEVER Commit Secrets to This Repository
+
 **THIS REPOSITORY IS PUBLIC - ANY SECRETS COMMITTED WILL BE IMMEDIATELY EXPOSED TO THE ENTIRE WORLD**
 
 - **NEVER commit passwords, API keys, tokens, certificates, or any sensitive data**
@@ -71,6 +79,7 @@ This is a Flux CD GitOps repository for managing a Kubernetes (k3s) cluster. The
 - **NEVER commit configuration files that contain embedded secrets**
 
 ### What to Do Instead
+
 - **Reference secrets by name only** - Use `secretRef` in Flux resources pointing to Kubernetes Secrets
 - **Create secrets outside of Git** - Use `kubectl create secret` or external-secrets operator
 - **Use placeholder values** - If examples are needed, use clearly marked placeholders like `REPLACE_WITH_ACTUAL_SECRET`
@@ -78,6 +87,7 @@ This is a Flux CD GitOps repository for managing a Kubernetes (k3s) cluster. The
 - **Use secret management tools** - Consider using Sealed Secrets, External Secrets Operator, or Vault
 
 ### Examples of What NOT to Commit
+
 ```yaml
 # ❌ NEVER DO THIS - Secrets in plain text
 apiVersion: v1
@@ -99,13 +109,14 @@ data:
 ```
 
 ### Examples of What TO Do
+
 ```yaml
 # ✅ DO THIS - Reference secret by name
 apiVersion: source.toolkit.fluxcd.io/v1beta2
 kind: GitRepository
 spec:
   secretRef:
-    name: flux-ssh-key  # Secret created outside of Git
+    name: flux-ssh-key # Secret created outside of Git
 
 # ✅ DO THIS - Use placeholder in examples
 env:
@@ -117,6 +128,7 @@ env:
 ```
 
 **If you accidentally commit a secret, you MUST:**
+
 1. **Immediately rotate/revoke the exposed secret** - Assume it's compromised
 2. **Remove it from Git history** (if possible, though it may already be exposed)
 3. **Never commit the same secret again**
@@ -126,6 +138,7 @@ env:
 ## ⚠️ CRITICAL DATA SAFETY RULES ⚠️
 
 ### NEVER Delete PersistentVolumes with Data
+
 **THIS IS THE MOST IMPORTANT RULE - DATA LOSS IS PERMANENT AND IRREVERSIBLE**
 
 - **NEVER delete a PersistentVolume (PV) or PersistentVolumeClaim (PVC) that contains data**
@@ -134,6 +147,7 @@ env:
 - **ALWAYS assume existing PVs contain important data that cannot be recovered**
 
 ### Required Migration Process for Storage Changes
+
 When migrating from old storage to new storage (e.g., static PV to StorageClass), you MUST:
 
 1. **Create the new PV/PVC first** - Do NOT delete the old one
@@ -143,6 +157,7 @@ When migrating from old storage to new storage (e.g., static PV to StorageClass)
 5. **Only after successful migration** - The old PV can be kept as backup or removed (with extreme caution)
 
 ### Migration Example Pattern
+
 ```bash
 # 1. Create new PVC with nfs-rwx StorageClass
 kubectl apply -f new-pvc.yaml
@@ -166,12 +181,14 @@ kubectl apply -f migration-pod.yaml
 ## Important Considerations
 
 ### Direct kubectl Access
+
 - **kubectl is always available** and can be used to apply files directly to the cluster
 - You can use `kubectl apply -f <file>` to test changes immediately without waiting for Flux to sync
 - This is useful for rapid iteration and testing before committing to Git
 - However, remember that Git is still the source of truth - any direct kubectl changes should eventually be reflected in Git
 
 ### GitOps Workflow
+
 - **Never manually edit resources in the cluster** - all changes must go through Git
 - Changes to this repository will be automatically synced to the cluster
 - The main branch is the source of truth
@@ -179,10 +196,12 @@ kubectl apply -f migration-pod.yaml
 - While kubectl can be used for testing, final state should always match Git
 
 ### Flux System Files
+
 - Files in `flux-system/` directory that are marked "DO NOT EDIT" are auto-generated by Flux
 - Only edit Flux configuration files that you created (e.g., application Kustomizations)
 
 ### Secrets Management
+
 - **THIS REPOSITORY IS PUBLIC - NEVER COMMIT SECRETS** (see Critical Security Rules above)
 - **Always reference secrets by name only** - Never include actual secret values
 - Use Kubernetes Secrets referenced by name in manifests (created via `kubectl` or external-secrets operator)
@@ -190,17 +209,20 @@ kubectl apply -f migration-pod.yaml
 - If you need examples, use clearly marked placeholders that indicate they must be replaced
 
 ### Resource Naming
+
 - Use kebab-case for resource names
 - Namespaces should match application names when possible
 - PersistentVolumeClaim names follow pattern: `{app}pvc` or `{app}{purpose}pvc`
 - **Note**: With the new `nfs-rwx` StorageClass, you typically don't need to create PersistentVolumes manually - they are dynamically provisioned
 
 ### Intervals & Timeouts
+
 - Common sync intervals: 1m, 5m, 30m
 - Use appropriate timeouts for HelmReleases (typically 3m-5m)
 - Set `wait: true` on Kustomizations when you need to ensure resources are ready
 
 ### Image Automation
+
 - ImageUpdateAutomation uses Setters strategy to update Kustomize files
 - Commit messages follow template: `{{range .Changed.Changes}}{{print .OldValue}} -> {{println .NewValue}}{{end}}`
 - Image policies use semver ranges (e.g., `x.x.x` for any version)
@@ -220,25 +242,43 @@ kubectl apply -f migration-pod.yaml
 5. Test changes with `kubectl apply -f <file>` before committing
 6. Commit changes to Git for Flux to sync
 
+## Prerequisites — Required Secrets
+
+These secrets must be created manually before the corresponding HelmReleases can install. They are not stored in Git (this is a public repo).
+
+### Sentry
+
+```bash
+kubectl create namespace sentry
+kubectl create secret generic sentry-secret -n sentry \
+  --from-literal=my-secret-key=$(openssl rand -hex 50)
+kubectl create secret generic sentry-postgres-secret -n sentry \
+  --from-literal=postgres-password=$(openssl rand -hex 20)
+```
+
 ## Common Tasks
 
 ### Adding a Helm Chart
+
 1. Create HelmRepository resource
 2. Create HelmRelease resource referencing the HelmRepository
 3. Configure values inline or via ConfigMap/Secret references
 4. **For storage**: Use `storageClass: nfs-rwx` in HelmRelease values (not `storageClassName: ""` with static PVs)
 
 ### Adding a Git Repository Source
+
 1. Create GitRepository resource with URL and credentials (secretRef)
 2. Create Kustomization resource pointing to the GitRepository
 3. Specify the path within the repository to sync
 
 ### Setting Up Image Automation
+
 1. Create ImageRepository resource pointing to container registry
 2. Create ImagePolicy with semver range
 3. Create ImageUpdateAutomation to update Kustomize files automatically
 
 ## Testing & Validation
+
 - Validate YAML syntax before committing
 - Use `kubectl apply --dry-run=client` to validate manifests
 - **Apply directly with kubectl**: `kubectl apply -f <file>` to test immediately
@@ -247,7 +287,9 @@ kubectl apply -f migration-pod.yaml
 - Verify storage: `kubectl get pvc -n <namespace>` to confirm PVCs are bound
 
 ## Bootstrap Command
+
 When reinstalling Flux, use:
+
 ```bash
 flux bootstrap gitlab \
   --deploy-token-auth \
@@ -260,6 +302,7 @@ flux bootstrap gitlab \
 ```
 
 ## Storage Class Migration
+
 - **All new resources MUST use `nfs-rwx` StorageClass**
 - Old resources using static PersistentVolumes (`storageClassName: ""` with `volumeName`) are being migrated
 - **CRITICAL**: When migrating existing applications to use `nfs-rwx`:
@@ -278,7 +321,7 @@ flux bootstrap gitlab \
   spec:
     accessModes:
       - ReadWriteMany
-    storageClassName: nfs-rwx  # Use this, not ""
+    storageClassName: nfs-rwx # Use this, not ""
     resources:
       requests:
         storage: 50Gi
@@ -299,26 +342,34 @@ When adding a new service, include limits from day one. When discovering a servi
 ## Operational Rules
 
 ### Validate YAML before committing
+
 The pre-commit hook validates YAML syntax. If it fails, the commit is blocked. You can also manually validate:
+
 ```bash
 python3 -c "import yaml; list(yaml.safe_load_all(open('path/to/file.yaml')))"
 ```
 
 ### Check Flux status before destructive cluster operations
+
 Before running `kubectl delete`, `kubectl rollout restart`, or any destructive command, always check:
+
 ```bash
 flux get helmreleases -A
 flux get kustomizations -A
 ```
+
 Never disrupt a namespace while a HelmRelease is mid-install or mid-upgrade.
 
 ### Verify Helm value nesting against the chart schema
+
 When editing HelmRelease values, always run `helm show values <repo>/<chart> --version <ver>` to confirm which keys are top-level vs nested. Never assume nesting based on visual similarity. A key that appears to be under `sentry:` might actually be a sibling of it (e.g., `taskBroker`, `taskWorker`, `uptimeResults`).
 
 ### Edit carefully to avoid duplicate keys
+
 When using find-and-replace edits on YAML, always include enough surrounding context in the old string to verify the replacement won't create duplicate keys. After editing, validate the file immediately.
 
 ## General Guidelines
+
 - **NEVER commit secrets to this public repository** - This is a critical security requirement
 - **NEVER delete or modify PVs/PVCs without data migration** - This is a critical data safety requirement
 - Always validate YAML syntax
@@ -332,4 +383,3 @@ When using find-and-replace edits on YAML, always include enough surrounding con
 - Use kubectl for rapid testing, but ensure changes are committed to Git
 - **When in doubt about storage operations, STOP and verify data safety first**
 - **Before committing, verify no secrets are included** - Check `git diff` carefully
-
