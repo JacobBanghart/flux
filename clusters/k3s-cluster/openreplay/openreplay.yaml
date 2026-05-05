@@ -11,13 +11,22 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: db
+  name: openreplay
 
 ---
+# Shared RWX PVC for OpenReplay migration jobs and storage
 apiVersion: v1
-kind: Namespace
+kind: PersistentVolumeClaim
 metadata:
-  name: app
+  name: openreplay-shared
+  namespace: openreplay
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-rwx
+  resources:
+    requests:
+      storage: 10Gi
 
 ---
 apiVersion: source.toolkit.fluxcd.io/v1
@@ -36,8 +45,8 @@ spec:
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: databases
-  namespace: db
+  name: openreplay-db
+  namespace: openreplay
 spec:
   interval: 10m
   timeout: 15m
@@ -141,7 +150,7 @@ apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: openreplay
-  namespace: app
+  namespace: openreplay
 spec:
   interval: 10m
   timeout: 30m
@@ -152,8 +161,8 @@ spec:
     remediation:
       retries: 3
   dependsOn:
-    - name: databases
-      namespace: db
+    - name: openreplay-db
+      namespace: openreplay
   chart:
     spec:
       chart: ./scripts/helmcharts/openreplay
@@ -192,7 +201,7 @@ spec:
             ports:
               http: 80
               https: 443
-      pvcRWXName: nfs-rwx
+      pvcRWXName: openreplay-shared
       ORSecureAccess: true
       openReplayContainerRegistry: "public.ecr.aws/p1t3u8a3"
       orAppSecrets:
@@ -200,18 +209,18 @@ spec:
       postgresql:
         existingSecret: openreplay-postgres
         existingSecretPasswordKey: postgresqlPassword
-        postgresqlHost: "postgresql.db.svc.cluster.local"
+        postgresqlHost: "postgresql.openreplay.svc.cluster.local"
         postgresqlPort: "5432"
         postgresqlUser: "postgres"
         postgresqlDatabase: "postgres"
       redis:
         enabled: true
-        redisHost: "redis-master.db.svc.cluster.local"
+        redisHost: "redis-master.openreplay.svc.cluster.local"
         redisPort: "6379"
       clickhouse:
         enabled: false
         existingSecret: openreplay-secret
-        chHost: clickhouse-openreplay-clickhouse.db.svc.cluster.local
+        chHost: clickhouse-openreplay-clickhouse.openreplay.svc.cluster.local
         username: default
         password: ""
         service:
@@ -232,7 +241,7 @@ spec:
       s3:
         existingSecret: openreplay-secret
         region: "us-east-1"
-        endpoint: "http://minio.db.svc.cluster.local:9000"
+        endpoint: "http://minio.openreplay.svc.cluster.local:9000"
         assetsBucket: "sessions-assets"
         recordingsBucket: "mobs"
         sourcemapsBucket: "sourcemaps"
@@ -301,7 +310,7 @@ apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
   name: openreplay-ingest-strip
-  namespace: app
+  namespace: openreplay
 spec:
   stripPrefix:
     prefixes:
@@ -311,7 +320,7 @@ apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
   name: openreplay-assist-strip
-  namespace: app
+  namespace: openreplay
 spec:
   stripPrefix:
     prefixes:
@@ -321,7 +330,7 @@ apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
   name: openreplay
-  namespace: app
+  namespace: openreplay
 spec:
   entryPoints:
     - websecure
