@@ -226,6 +226,7 @@ spec:
       url: https://sentry.backtosafety.app
 
     sentry:
+      allowRegistration: true
       existingSecret: sentry-secret
       existingSecretKey: my-secret-key
       web:
