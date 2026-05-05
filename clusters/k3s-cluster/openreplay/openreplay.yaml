@@ -301,6 +301,9 @@ spec:
     connector:
       enabled: false
 
+    ee-components:
+      enabled: false
+
     chalice:
       resources:
         requests:
