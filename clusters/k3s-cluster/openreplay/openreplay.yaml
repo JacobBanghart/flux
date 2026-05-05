@@ -1,0 +1,299 @@
+# OpenReplay — session replay and product analytics
+# Docs: https://docs.openreplay.com/en/deployment/deploy-kubernetes/
+#
+# Prerequisites (run before Flux syncs):
+#   kubectl apply -f openreplay-db.secret.yaml    # from serverk8sdeploywithk3s
+#   kubectl apply -f openreplay-app.secret.yaml    # from serverk8sdeploywithk3s
+#
+# DNS: openreplay.jacobbanghart.com → Traefik LoadBalancer IP
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: db
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: app
+
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: openreplay
+  namespace: flux-system
+spec:
+  interval: 1h
+  url: https://github.com/openreplay/openreplay.git
+  ref:
+    tag: v1.27.0
+
+---
+# Databases: PostgreSQL, Redis, MinIO (Kafka/ClickHouse disabled for OSS)
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: databases
+  namespace: db
+spec:
+  interval: 10m
+  timeout: 15m
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: ./scripts/helmcharts/databases
+      sourceRef:
+        kind: GitRepository
+        name: openreplay
+        namespace: flux-system
+      interval: 1h
+  valuesFrom:
+    - kind: Secret
+      name: openreplay-postgres
+      valuesKey: postgresqlPassword
+      targetPath: postgresql.postgresqlPassword
+  values:
+    postgresql:
+      fullnameOverride: postgresql
+      postgresqlSharedPreloadLibraries: "pgaudit,pg_stat_statements"
+      image:
+        registry: ghcr.io
+        repository: openreplay/postgres
+        tag: 17
+      resources:
+        requests:
+          memory: "256Mi"
+          cpu: "250m"
+        limits:
+          memory: "2Gi"
+          cpu: "1"
+      primary:
+        persistence:
+          storageClass: nfs-rwx
+          size: 50Gi
+
+    redis:
+      image:
+        registry: ghcr.io
+        repository: openreplay/valkey
+        tag: 8
+      fullnameOverride: redis
+      usePassword: false
+      cluster:
+        enabled: false
+      redis:
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "2Gi"
+            cpu: "250m"
+      master:
+        persistence:
+          storageClass: nfs-rwx
+          size: 10Gi
+
+    minio:
+      fullnameOverride: minio
+      image:
+        repository: openreplay/minio
+        tag: "2025"
+      resources:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "512Mi"
+          cpu: "256m"
+      persistence:
+        storageClass: nfs-rwx
+        size: 50Gi
+
+    kafka:
+      enabled: false
+
+    clickhouse:
+      enabled: false
+
+    vault:
+      enabled: false
+
+---
+# OpenReplay application services
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: openreplay
+  namespace: app
+spec:
+  interval: 10m
+  timeout: 30m
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  dependsOn:
+    - name: databases
+      namespace: db
+  chart:
+    spec:
+      chart: ./scripts/helmcharts/openreplay
+      sourceRef:
+        kind: GitRepository
+        name: openreplay
+        namespace: flux-system
+      interval: 1h
+  values:
+    ingress-nginx:
+      enabled: false
+
+    global:
+      domainName: openreplay.jacobbanghart.com
+      pvcRWXName: nfs-rwx
+      ORSecureAccess: true
+      openReplayContainerRegistry: "public.ecr.aws/p1t3u8a3"
+      orAppSecrets:
+        existingSecret: openreplay-secret
+      postgresql:
+        existingSecret: openreplay-postgres
+        existingSecretPasswordKey: postgresqlPassword
+        postgresqlHost: "postgresql.db.svc.cluster.local"
+        postgresqlPort: "5432"
+        postgresqlUser: "postgres"
+        postgresqlDatabase: "postgres"
+      redis:
+        enabled: true
+        redisHost: "redis-master.db.svc.cluster.local"
+        redisPort: "6379"
+      clickhouse:
+        enabled: false
+      kafka:
+        enabled: false
+      s3:
+        region: "us-east-1"
+        endpoint: "http://minio.db.svc.cluster.local:9000"
+        assetsBucket: "sessions-assets"
+        recordingsBucket: "mobs"
+        sourcemapsBucket: "sourcemaps"
+        spotsBucket: "spots"
+        vaultBucket: "vault-data"
+
+    frontend:
+      ingress:
+        enabled: false
+      resources:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "512Mi"
+          cpu: "500m"
+
+    http:
+      ingress:
+        enabled: false
+      resources:
+        requests:
+          memory: "256Mi"
+          cpu: "200m"
+        limits:
+          memory: "1Gi"
+          cpu: "1"
+
+    assist:
+      enabled: true
+      ingress:
+        enabled: false
+      resources:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "512Mi"
+          cpu: "500m"
+
+    chalice:
+      resources:
+        requests:
+          memory: "256Mi"
+          cpu: "200m"
+        limits:
+          memory: "1Gi"
+          cpu: "1"
+
+    db:
+      resources:
+        requests:
+          memory: "256Mi"
+          cpu: "200m"
+        limits:
+          memory: "1Gi"
+          cpu: "1"
+
+    migration:
+      env:
+        SKIP_PERMISSION_CHANGE: "false"
+
+---
+# Traefik IngressRoute — frontend + ingest + assist WebSocket
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: openreplay-ingest-strip
+  namespace: app
+spec:
+  stripPrefix:
+    prefixes:
+      - "/ingest"
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: openreplay-assist-strip
+  namespace: app
+spec:
+  stripPrefix:
+    prefixes:
+      - "/ws-assist"
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: openreplay
+  namespace: app
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`openreplay.jacobbanghart.com`) && PathPrefix(`/ingest`)
+      kind: Rule
+      services:
+        - name: http-openreplay
+          port: 8080
+      middlewares:
+        - name: openreplay-ingest-strip
+    - match: Host(`openreplay.jacobbanghart.com`) && PathPrefix(`/ws-assist`)
+      kind: Rule
+      services:
+        - name: assist-openreplay
+          port: 9001
+      middlewares:
+        - name: openreplay-assist-strip
+    - match: Host(`openreplay.jacobbanghart.com`)
+      kind: Rule
+      services:
+        - name: frontend-openreplay
+          port: 8080
+  tls:
+    certResolver: cloudflare
