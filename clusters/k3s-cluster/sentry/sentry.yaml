@@ -147,6 +147,39 @@ spec:
       - sentry-auth
     accessControlAllowCredentials: true
 ---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: sentry
+  namespace: sentry
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`sentry.backtosafety.app`) && PathPrefix(`/api/store`)
+      kind: Rule
+      services:
+        - name: sentry-nginx
+          port: 80
+      middlewares:
+        - name: sentry-cors
+    - match: Host(`sentry.backtosafety.app`) && PathPrefix(`/api/0/relays`)
+      kind: Rule
+      services:
+        - name: sentry-nginx
+          port: 80
+      middlewares:
+        - name: sentry-cors
+    - match: Host(`sentry.backtosafety.app`)
+      kind: Rule
+      services:
+        - name: sentry-nginx
+          port: 80
+      middlewares:
+        - name: sentry-cors
+  tls:
+    certResolver: cloudflare
+---
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
@@ -598,14 +631,7 @@ spec:
           cpu: "1000m"
 
     ingress:
-      enabled: true
-      ingressClassName: traefik
-      regexPathStyle: traefik
-      hostname: sentry.backtosafety.app
-      annotations:
-        traefik.ingress.kubernetes.io/router.entrypoints: websecure
-        traefik.ingress.kubernetes.io/router.tls.certresolver: cloudflare
-        traefik.ingress.kubernetes.io/router.middlewares: sentry-cors@kubernetescrd
+      enabled: false
 
     nginx:
       enabled: true
