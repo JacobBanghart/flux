@@ -165,17 +165,14 @@ spec:
   valuesFrom:
     - kind: Secret
       name: openreplay-postgres
-      namespace: db
       valuesKey: postgresqlPassword
       targetPath: global.postgresql.postgresqlPassword
     - kind: Secret
       name: openreplay-secret
-      namespace: app
       valuesKey: access-key
       targetPath: global.s3.accessKey
     - kind: Secret
       name: openreplay-secret
-      namespace: app
       valuesKey: secret-key
       targetPath: global.s3.secretKey
   values:
