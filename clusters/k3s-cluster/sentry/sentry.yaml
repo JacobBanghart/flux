@@ -121,6 +121,32 @@ spec:
       port: 9000
       targetPort: 9000
 ---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: sentry-cors
+  namespace: sentry
+spec:
+  headers:
+    accessControlAllowMethods:
+      - GET
+      - POST
+      - OPTIONS
+      - PUT
+      - PATCH
+      - DELETE
+    accessControlAllowOriginList:
+      - "*"
+    accessControlMaxAge: 86400
+    accessControlAllowHeaders:
+      - Content-Type
+      - Authorization
+      - sentry-version
+      - sentry-key
+      - sentry-client
+      - sentry-auth
+    accessControlAllowCredentials: true
+---
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
@@ -579,6 +605,7 @@ spec:
       annotations:
         traefik.ingress.kubernetes.io/router.entrypoints: websecure
         traefik.ingress.kubernetes.io/router.tls.certresolver: cloudflare
+        traefik.ingress.kubernetes.io/router.middlewares: sentry-cors@kubernetescrd
 
     nginx:
       enabled: true
