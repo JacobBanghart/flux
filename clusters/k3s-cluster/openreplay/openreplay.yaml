@@ -60,6 +60,22 @@ spec:
       name: openreplay-postgres
       valuesKey: postgresqlPassword
       targetPath: postgresql.postgresqlPassword
+    - kind: Secret
+      name: openreplay-minio
+      valuesKey: access-key
+      targetPath: minio.global.minio.accessKey
+    - kind: Secret
+      name: openreplay-minio
+      valuesKey: secret-key
+      targetPath: minio.global.minio.secretKey
+    - kind: Secret
+      name: openreplay-secret
+      valuesKey: access-key
+      targetPath: global.s3.accessKey
+    - kind: Secret
+      name: openreplay-secret
+      valuesKey: secret-key
+      targetPath: global.s3.secretKey
   values:
     postgresql:
       fullnameOverride: postgresql
@@ -154,6 +170,19 @@ spec:
         name: openreplay
         namespace: flux-system
       interval: 1h
+  valuesFrom:
+    - kind: Secret
+      name: openreplay-postgres
+      valuesKey: postgresqlPassword
+      targetPath: global.postgresql.postgresqlPassword
+    - kind: Secret
+      name: openreplay-secret
+      valuesKey: access-key
+      targetPath: global.s3.accessKey
+    - kind: Secret
+      name: openreplay-secret
+      valuesKey: secret-key
+      targetPath: global.s3.secretKey
   values:
     ingress-nginx:
       enabled: false
@@ -191,6 +220,8 @@ spec:
         enabled: false
         existingSecret: openreplay-secret
         chHost: clickhouse-openreplay-clickhouse.db.svc.cluster.local
+        username: default
+        password: ""
         service:
           webPort: 8123
           dataPort: 9000
