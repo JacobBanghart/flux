@@ -68,14 +68,6 @@ spec:
       name: openreplay-minio
       valuesKey: secret-key
       targetPath: minio.global.minio.secretKey
-    - kind: Secret
-      name: openreplay-secret
-      valuesKey: access-key
-      targetPath: global.s3.accessKey
-    - kind: Secret
-      name: openreplay-secret
-      valuesKey: secret-key
-      targetPath: global.s3.secretKey
   values:
     postgresql:
       fullnameOverride: postgresql
