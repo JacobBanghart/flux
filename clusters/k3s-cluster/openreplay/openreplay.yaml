@@ -296,11 +296,6 @@ spec:
           memory: "512Mi"
           cpu: "500m"
 
-    assist-api:
-      enabled: false
-    connector:
-      enabled: false
-
     chalice:
       resources:
         requests:
