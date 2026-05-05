@@ -189,6 +189,7 @@ spec:
         redisPort: "6379"
       clickhouse:
         enabled: false
+        existingSecret: openreplay-secret
         chHost: clickhouse-openreplay-clickhouse.db.svc.cluster.local
         service:
           webPort: 8123
@@ -203,13 +204,10 @@ spec:
         emailSslKey: ""
         emailSslCert: ""
         emailFrom: "OpenReplay<do-not-reply@openreplay.jacobbanghart.com>"
-        chHost: clickhouse-openreplay-clickhouse.db.svc.cluster.local
-        service:
-          webPort: 8123
-          dataPort: 9000
       kafka:
         enabled: false
       s3:
+        existingSecret: openreplay-secret
         region: "us-east-1"
         endpoint: "http://minio.db.svc.cluster.local:9000"
         assetsBucket: "sessions-assets"
