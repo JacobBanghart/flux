@@ -4,7 +4,7 @@ kind: Namespace
 metadata:
   name: posthog
 ---
-# PostHog web UI (docker-compose exposes host port 8000)
+# PostHog web UI (Caddy reverse proxy on host port 80)
 apiVersion: v1
 kind: Endpoints
 metadata:
@@ -15,7 +15,7 @@ subsets:
       - ip: 10.1.0.34
     ports:
       - name: http
-        port: 8000
+        port: 80
 ---
 apiVersion: v1
 kind: Service
@@ -25,8 +25,8 @@ metadata:
 spec:
   ports:
     - name: http
-      port: 8000
-      targetPort: 8000
+      port: 80
+      targetPort: 80
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -44,7 +44,7 @@ spec:
               service:
                 name: posthog-web
                 port:
-                  number: 8000
+                  number: 80
 ---
 # Temporal UI (docker-compose exposes host port 8081)
 apiVersion: v1
