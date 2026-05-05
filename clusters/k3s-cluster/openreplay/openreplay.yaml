@@ -143,7 +143,7 @@ spec:
       fullnameOverride: clickhouse-openreplay-clickhouse
       image:
         repository: clickhouse/clickhouse-server
-        tag: "25.9-alpine"
+        tag: "26.2-alpine"
       resources:
         requests:
           memory: "256Mi"
@@ -295,6 +295,11 @@ spec:
         limits:
           memory: "512Mi"
           cpu: "500m"
+
+    assist-api:
+      enabled: false
+    connector:
+      enabled: false
 
     chalice:
       resources:
