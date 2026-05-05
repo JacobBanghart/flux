@@ -193,6 +193,20 @@ spec:
         service:
           webPort: 8123
           dataPort: 9000
+      email:
+        emailHost: ""
+        emailPort: "587"
+        emailUser: ""
+        emailPassword: ""
+        emailUseTls: "true"
+        emailUseSsl: "false"
+        emailSslKey: ""
+        emailSslCert: ""
+        emailFrom: "OpenReplay<do-not-reply@openreplay.jacobbanghart.com>"
+        chHost: clickhouse-openreplay-clickhouse.db.svc.cluster.local
+        service:
+          webPort: 8123
+          dataPort: 9000
       kafka:
         enabled: false
       s3:
