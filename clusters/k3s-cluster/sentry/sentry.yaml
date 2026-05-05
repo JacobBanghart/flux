@@ -712,9 +712,8 @@ spec:
       host: smtp.resend.com
       port: "587"
       username: resend
-      password:
-        existingSecret: sentry-secret
-        existingSecretKey: smtp-password
+      existingSecret: sentry-secret
+      existingSecretKey: smtp-password
       from: noreply@backtosafety.app
       useTls: true
 
