@@ -285,6 +285,39 @@ flux bootstrap gitlab \
   ```
 - For HelmReleases, use `storageClass: nfs-rwx` in values (see `vault/vault.yaml` for example)
 
+## Resource Limits
+
+Every Deployment, StatefulSet, and HelmRelease MUST set memory and CPU limits on all containers. Unbounded pods cause node OOM kills that take down unrelated services.
+
+- Set `resources.limits.memory` and `resources.limits.cpu` on every container
+- Set `resources.requests` close to actual usage (not just the minimum)
+- For HelmReleases, add limits under the chart's values structure — verify the correct nesting with `helm show values <repo>/<chart> --version <ver>`
+- For bare Deployments/StatefulSets, add the `resources` block directly in the container spec
+
+When adding a new service, include limits from day one. When discovering a service without limits, add them.
+
+## Operational Rules
+
+### Validate YAML before committing
+The pre-commit hook validates YAML syntax. If it fails, the commit is blocked. You can also manually validate:
+```bash
+python3 -c "import yaml; list(yaml.safe_load_all(open('path/to/file.yaml')))"
+```
+
+### Check Flux status before destructive cluster operations
+Before running `kubectl delete`, `kubectl rollout restart`, or any destructive command, always check:
+```bash
+flux get helmreleases -A
+flux get kustomizations -A
+```
+Never disrupt a namespace while a HelmRelease is mid-install or mid-upgrade.
+
+### Verify Helm value nesting against the chart schema
+When editing HelmRelease values, always run `helm show values <repo>/<chart> --version <ver>` to confirm which keys are top-level vs nested. Never assume nesting based on visual similarity. A key that appears to be under `sentry:` might actually be a sibling of it (e.g., `taskBroker`, `taskWorker`, `uptimeResults`).
+
+### Edit carefully to avoid duplicate keys
+When using find-and-replace edits on YAML, always include enough surrounding context in the old string to verify the replacement won't create duplicate keys. After editing, validate the file immediately.
+
 ## General Guidelines
 - **NEVER commit secrets to this public repository** - This is a critical security requirement
 - **NEVER delete or modify PVs/PVCs without data migration** - This is a critical data safety requirement
