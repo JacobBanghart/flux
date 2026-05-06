@@ -351,25 +351,6 @@ spec:
       - "/ws-assist"
 ---
 apiVersion: traefik.io/v1alpha1
-kind: Middleware
-metadata:
-  name: openreplay-ingest-cors
-  namespace: openreplay
-spec:
-  headers:
-    accessControlAllowMethods:
-      - GET
-      - POST
-      - OPTIONS
-    accessControlAllowOriginList:
-      - "*"
-    accessControlAllowHeaders:
-      - Content-Type
-      - Authorization
-      - X-OpenReplay-ProjectId
-    accessControlMaxAge: 86400
----
-apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
   name: openreplay
@@ -384,7 +365,6 @@ spec:
         - name: http-openreplay
           port: 8080
       middlewares:
-        - name: openreplay-ingest-cors
         - name: openreplay-ingest-strip
     - match: Host(`openreplay.jacobbanghart.com`) && PathPrefix(`/ws-assist`)
       kind: Rule
