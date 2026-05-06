@@ -5,7 +5,7 @@
 #   kubectl apply -f openreplay-db.secret.yaml    # from serverk8sdeploywithk3s
 #   kubectl apply -f openreplay-app.secret.yaml    # from serverk8sdeploywithk3s
 #
-# DNS: openreplay.jacobbanghart.com → Traefik LoadBalancer IP
+# DNS: openreplay.backtosafety.app → Traefik LoadBalancer IP
 
 ---
 apiVersion: v1
@@ -202,7 +202,7 @@ spec:
       enabled: false
 
     global:
-      domainName: openreplay.jacobbanghart.com
+      domainName: openreplay.backtosafety.app
       ingress:
         controller:
           ingressClass:
@@ -250,7 +250,7 @@ spec:
         emailUseSsl: "false"
         emailSslKey: ""
         emailSslCert: ""
-        emailFrom: "OpenReplay<do-not-reply@openreplay.jacobbanghart.com>"
+        emailFrom: "OpenReplay<do-not-reply@openreplay.backtosafety.app>"
       kafka:
         enabled: false
       s3:
@@ -386,7 +386,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`openreplay.jacobbanghart.com`) && PathPrefix(`/ingest`)
+    - match: Host(`openreplay.backtosafety.app`) && PathPrefix(`/ingest`)
       kind: Rule
       services:
         - name: http-openreplay
@@ -394,21 +394,21 @@ spec:
       middlewares:
         - name: openreplay-ingest-cors
         - name: openreplay-ingest-strip
-    - match: Host(`openreplay.jacobbanghart.com`) && PathPrefix(`/ws-assist`)
+    - match: Host(`openreplay.backtosafety.app`) && PathPrefix(`/ws-assist`)
       kind: Rule
       services:
         - name: assist-openreplay
           port: 9001
       middlewares:
         - name: openreplay-assist-strip
-    - match: Host(`openreplay.jacobbanghart.com`) && PathPrefix(`/v2/api`)
+    - match: Host(`openreplay.backtosafety.app`) && PathPrefix(`/v2/api`)
       kind: Rule
       services:
         - name: chalice-openreplay
           port: 8000
       middlewares:
         - name: openreplay-v2-strip
-    - match: Host(`openreplay.jacobbanghart.com`)
+    - match: Host(`openreplay.backtosafety.app`)
       kind: Rule
       services:
         - name: frontend-openreplay
