@@ -215,6 +215,8 @@ spec:
               http: 80
               https: 443
       pvcRWXName: openreplay-shared
+      ee-components:
+        enabled: false
       ORSecureAccess: true
       openReplayContainerRegistry: "public.ecr.aws/p1t3u8a3"
       orAppSecrets:
@@ -299,9 +301,6 @@ spec:
       enabled: false
 
     connector:
-      enabled: false
-
-    ee-components:
       enabled: false
 
     chalice:
