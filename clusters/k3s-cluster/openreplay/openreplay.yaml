@@ -327,6 +327,19 @@ spec:
 
 ---
 # Traefik IngressRoute and Middlewares for OpenReplay
+#
+# The chart's ingress templates are nginx-specific (nginx.org/mergeable-ingress-type,
+# nginx.org/location-snippets rewrites). Since we run Traefik, we define custom
+# IngressRoutes with Traefik Middleware CRDs for path stripping and CORS.
+#
+# Routing logic:
+#   /ingest/*     → http (ingest service), strip /ingest prefix
+#   /ws-assist/*  → assist, strip /ws-assist prefix
+#   /v2/api/*     → chalice, strip /v2 prefix (frontend rewrites /api → /v2/api)
+#   /api/*        → chalice directly (chalice expects /api prefix)
+#   /pa/*         → chalice (product analytics)
+#   /assists/*    → assist
+#   /*            → frontend (SPA catch-all)
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
@@ -408,6 +421,21 @@ spec:
           port: 8000
       middlewares:
         - name: openreplay-v2-strip
+    - match: Host(`openreplay.backtosafety.app`) && PathPrefix(`/api`)
+      kind: Rule
+      services:
+        - name: chalice-openreplay
+          port: 8000
+    - match: Host(`openreplay.backtosafety.app`) && PathPrefix(`/pa`)
+      kind: Rule
+      services:
+        - name: chalice-openreplay
+          port: 8000
+    - match: Host(`openreplay.backtosafety.app`) && PathPrefix(`/assists`)
+      kind: Rule
+      services:
+        - name: assist-openreplay
+          port: 9001
     - match: Host(`openreplay.backtosafety.app`)
       kind: Rule
       services:
