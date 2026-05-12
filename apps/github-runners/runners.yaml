@@ -17,8 +17,8 @@ spec:
       dockerEnabled: true
       resources:
         limits:
-          cpu: "4"
-          memory: 8Gi
+          cpu: "20"
+          memory: 20Gi
         requests:
           cpu: "100m"
           memory: 128Mi
