@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: load-test
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: k6-quikdry-script
+  namespace: load-test
+data:
+  loadtest.js: |
+    import http from 'k6/http';
+    import { sleep } from 'k6';
+
+    const pages = [
+      'https://www.quikdrycarpetcleaning.com/',
+      'https://www.quikdrycarpetcleaning.com/carpet-cleaning/',
+      'https://www.quikdrycarpetcleaning.com/tile-grout-cleaning/',
+      'https://www.quikdrycarpetcleaning.com/upholstery-cleaning/',
+      'https://www.quikdrycarpetcleaning.com/about/',
+      'https://www.quikdrycarpetcleaning.com/faq/',
+    ];
+
+    export const options = {
+      scenarios: {
+        ramping_load: {
+          executor: 'ramping-vus',
+          startVUs: 0,
+          stages: [
+            { duration: '3m', target: 1000 },
+            { duration: '10m', target: 1000 },
+            { duration: '2m', target: 0 },
+          ],
+          gracefulRampDown: '30s',
+        },
+      },
+    };
+
+    export default function () {
+      const url = pages[Math.floor(Math.random() * pages.length)];
+      http.get(url);
+      sleep(1);
+    }
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: k6-quikdry-loadtest
+  namespace: load-test
+spec:
+  schedule: "0 20 * * *"
+  timeZone: "America/Chicago"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: k6
+              image: grafana/k6:latest
+              args: ["run", "/scripts/loadtest.js"]
+              resources:
+                requests:
+                  cpu: "4"
+                  memory: "4Gi"
+                limits:
+                  cpu: "16"
+                  memory: "8Gi"
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+          volumes:
+            - name: script
+              configMap:
+                name: k6-quikdry-script
