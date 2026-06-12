@@ -23,17 +23,33 @@ data:
     ];
 
     export const options = {
+      discardResponseBodies: true,
       scenarios: {
-        ramping_load: {
+        breaking_point: {
           executor: 'ramping-vus',
           startVUs: 0,
           stages: [
-            { duration: '3m', target: 1000 },
-            { duration: '10m', target: 1000 },
-            { duration: '2m', target: 0 },
+            { duration: '1m', target: 50 },
+            { duration: '2m', target: 50 },
+            { duration: '1m', target: 100 },
+            { duration: '2m', target: 100 },
+            { duration: '1m', target: 250 },
+            { duration: '2m', target: 250 },
+            { duration: '1m', target: 500 },
+            { duration: '2m', target: 500 },
+            { duration: '1m', target: 1000 },
+            { duration: '2m', target: 1000 },
+            { duration: '1m', target: 2000 },
+            { duration: '2m', target: 2000 },
+            { duration: '1m', target: 5000 },
+            { duration: '2m', target: 5000 },
           ],
           gracefulRampDown: '30s',
         },
+      },
+      thresholds: {
+        http_req_failed: [{ threshold: 'rate<0.5', abortOnFail: true, delayAbortEval: '10s' }],
+        http_req_duration: [{ threshold: 'p(95)<10000', abortOnFail: true, delayAbortEval: '10s' }],
       },
     };
 
@@ -66,11 +82,11 @@ spec:
               args: ["run", "/scripts/loadtest.js"]
               resources:
                 requests:
-                  cpu: "4"
-                  memory: "4Gi"
-                limits:
-                  cpu: "16"
+                  cpu: "8"
                   memory: "8Gi"
+                limits:
+                  cpu: "32"
+                  memory: "32Gi"
               volumeMounts:
                 - name: script
                   mountPath: /scripts
