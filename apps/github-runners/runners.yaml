@@ -39,3 +39,43 @@ spec:
     - type: TotalNumberOfQueuedAndInProgressWorkflowRuns
       repositoryNames:
         - JacobBanghart/BackToSafety
+---
+# Runner for ReclaimerGold/Ferrix — capped at 4 cores / 4Gi per runner
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: RunnerDeployment
+metadata:
+  name: ferrix-runner
+  namespace: actions-runner-system
+spec:
+  replicas: 1
+  template:
+    spec:
+      repository: ReclaimerGold/rdn-pve-manager
+      labels:
+        - self-hosted
+        - linux
+      dockerEnabled: true
+      resources:
+        limits:
+          cpu: "4"
+          memory: 4Gi
+        requests:
+          cpu: "100m"
+          memory: 128Mi
+      ephemeral: true
+---
+# Scales 1→18 based on queued/in-progress jobs for Ferrix
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: HorizontalRunnerAutoscaler
+metadata:
+  name: ferrix-runner-autoscaler
+  namespace: actions-runner-system
+spec:
+  scaleTargetRef:
+    name: ferrix-runner
+  minReplicas: 1
+  maxReplicas: 18
+  metrics:
+    - type: TotalNumberOfQueuedAndInProgressWorkflowRuns
+      repositoryNames:
+        - ReclaimerGold/rdn-pve-manager
