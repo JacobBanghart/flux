@@ -67,4 +67,14 @@ spec:
       githubAPICredentialsFrom:
         secretRef:
           name: ferrix-runner-secret
+      # Persist the actions tool cache (Node, etc.) across ephemeral pods so
+      # setup-node@v4 finds the runtime on disk instead of re-downloading it.
+      volumeMounts:
+        - name: tool-cache
+          mountPath: /opt/hostedtoolcache
+      volumes:
+        - name: tool-cache
+          hostPath:
+            path: /opt/hostedtoolcache/ferrix
+            type: DirectoryOrCreate
 ---
