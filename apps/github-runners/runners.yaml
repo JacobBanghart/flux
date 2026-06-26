@@ -72,9 +72,15 @@ spec:
       volumeMounts:
         - name: tool-cache
           mountPath: /opt/hostedtoolcache
+        - name: npm-cache
+          mountPath: /cache/npm
       volumes:
         - name: tool-cache
           hostPath:
             path: /opt/hostedtoolcache/ferrix
+            type: DirectoryOrCreate
+        - name: npm-cache
+          hostPath:
+            path: /opt/github-cache/npm
             type: DirectoryOrCreate
 ---
