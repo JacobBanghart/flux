@@ -64,7 +64,6 @@ spec:
         requests:
           cpu: "100m"
           memory: 128Mi
-      ephemeral: true
       githubAPICredentialsFrom:
         secretRef:
           name: ferrix-runner-secret
