@@ -77,7 +77,7 @@ spec:
         containers:
           main:
             image:
-              tag: v2.3.1
+              tag: v3.0.1
             resources:
               requests:
                 memory: "1024Mi"

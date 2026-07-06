@@ -54,7 +54,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: mealie
-          image: ghcr.io/mealie-recipes/mealie:v3.14.0
+          image: ghcr.io/mealie-recipes/mealie:v3.20.1
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
