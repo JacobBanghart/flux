@@ -17,14 +17,15 @@ spec:
       dockerEnabled: true
       resources:
         limits:
-          cpu: "20"
-          memory: 20Gi
+          cpu: "8"
+          memory: 8Gi
         requests:
           cpu: "100m"
           memory: 128Mi
       ephemeral: true
 ---
-# Scales 1→8 based on queued/in-progress jobs for BackToSafety
+# Scales 1→2 based on queued/in-progress jobs for BackToSafety
+# (trimmed from 1->8 @ 20c/20Gi to free host RAM for the k8s-homelab cluster)
 apiVersion: actions.summerwind.dev/v1alpha1
 kind: HorizontalRunnerAutoscaler
 metadata:
@@ -34,7 +35,7 @@ spec:
   scaleTargetRef:
     name: shared-runner
   minReplicas: 1
-  maxReplicas: 8
+  maxReplicas: 2
   metrics:
     - type: TotalNumberOfQueuedAndInProgressWorkflowRuns
       repositoryNames:
@@ -43,13 +44,14 @@ spec:
 # Runner for ReclaimerGold/Ferrix — capped at 4 cores / 4Gi per runner
 # Fixed replicas: HRA not viable since ARC 0.23.x HRA always uses the controller
 # installation, which can't cross org boundaries to ReclaimerGold
+# (trimmed from 10->4 replicas to free host RAM for the k8s-homelab cluster)
 apiVersion: actions.summerwind.dev/v1alpha1
 kind: RunnerDeployment
 metadata:
   name: ferrix-runner
   namespace: actions-runner-system
 spec:
-  replicas: 10
+  replicas: 4
   template:
     spec:
       repository: ReclaimerGold/rdn-pve-manager
