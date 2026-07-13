@@ -116,6 +116,8 @@ spec:
       interval: 5m
   values:
     appURL: https://invoice-ninja.jacobbanghart.com
+    mailer: smtp
+    extraEnvVarsSecret: invoice-ninja-mail-secret
     ingress:
       hostname: invoice-ninja.jacobbanghart.com
     http:
