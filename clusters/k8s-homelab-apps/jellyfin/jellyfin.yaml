@@ -1,0 +1,168 @@
+# Migrated from dev cluster (Wave 3, see k8s-homelab's docs/decisions.md).
+# Config/tv data copied from TrueNAS NFS into ceph-block PVCs via a
+# one-off migration Job (already run, not part of this GitOps tree) --
+# a handful of ASP.NET DataProtection key files were unreadable under
+# the NFS export's permissions (root_squash) and weren't copied;
+# regenerable, not real data loss. Movies volume is genuinely empty on
+# dev (verified), not a failed transfer -- nominal 4Ti PVCs on dev were
+# never actually close to full. Excluded from external-dns and dev's
+# copy left fully live -- public app cutover is a single router-level
+# event, not per-app.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: jellyfin
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jellyfinconfigpvc
+  namespace: jellyfin
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ceph-block
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jellyfintvpvc
+  namespace: jellyfin
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ceph-block
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jellyfinmoviespvc
+  namespace: jellyfin
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ceph-block
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jellyfin
+  namespace: jellyfin
+spec:
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: jellyfin
+  template:
+    metadata:
+      labels:
+        app: jellyfin
+    spec:
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: jellyfin
+          image: jellyfin/jellyfin:10.11.11
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              memory: "8Gi"
+              cpu: "4"
+          ports:
+            - containerPort: 8096
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8096
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8096
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - mountPath: /config
+              name: jellyfinconfigpvc
+            - mountPath: /data/tvshows
+              name: jellyfintvpvc
+            - mountPath: /data/movies
+              name: jellyfinmoviespvc
+      volumes:
+        - name: jellyfinmoviespvc
+          persistentVolumeClaim:
+            claimName: jellyfinmoviespvc
+        - name: jellyfintvpvc
+          persistentVolumeClaim:
+            claimName: jellyfintvpvc
+        - name: jellyfinconfigpvc
+          persistentVolumeClaim:
+            claimName: jellyfinconfigpvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jellyfin
+  namespace: jellyfin
+spec:
+  selector:
+    app: jellyfin
+  ports:
+    - port: 8096
+      targetPort: 8096
+      name: jellyfin
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: jellyfin
+  namespace: jellyfin
+  annotations:
+    external-dns.alpha.kubernetes.io/exclude: "true"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`jellyfin.jacobbanghart.com`)
+      kind: Rule
+      services:
+        - name: jellyfin
+          port: 8096
+  tls:
+    secretName: jellyfin-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: jellyfin-tls
+  namespace: jellyfin
+spec:
+  secretName: jellyfin-tls
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - jellyfin.jacobbanghart.com
+  issuerRef:
+    name: letsencrypt-cloudflare
+    kind: ClusterIssuer
+    group: cert-manager.io
