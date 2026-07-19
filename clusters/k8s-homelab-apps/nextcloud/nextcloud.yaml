@@ -1,0 +1,271 @@
+# Migrated from dev cluster (Wave 2, see k8s-homelab's docs/decisions.md).
+# Chart version pinned to exactly what dev runs (6.6.10, Nextcloud
+# 30.0.10) rather than latest (9.2.2, Nextcloud 34.0.1) -- a 4-major
+# version jump bundled into a data migration is a separate decision,
+# not something to do silently here. App files + user data already
+# copied from dev's live volumes into ceph-block PVCs (nextcloud-app-pvc
+# was on dev's local-path/node-local storage, relayed via a tarball
+# through the already-NFS-mounted data path rather than kubectl cp,
+# since a straight NFS mount wasn't available for that volume).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nextcloud
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nextcloud-app-pvc
+  namespace: nextcloud
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ceph-block
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nextcloud-data-pvc
+  namespace: nextcloud
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ceph-block
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nextcloud-apache-config
+  namespace: nextcloud
+data:
+  servername.conf: |
+    ServerName nextcloud.jacobbanghart.com
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: nextcloud-admin-secret
+  namespace: nextcloud
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: nextcloud-admin-secret
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: nextcloud/nextcloud-admin-secret
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: nextcloud-redis-secret
+  namespace: nextcloud
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: nextcloud-redis-secret
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: nextcloud/nextcloud-redis-secret
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: nextcloud-postgres-secret
+  namespace: nextcloud
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: nextcloud-postgres-secret
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: nextcloud/nextcloud-postgres-secret
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: nextcloud
+  namespace: nextcloud
+spec:
+  interval: 1h
+  url: https://nextcloud.github.io/helm/
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: nextcloud
+  namespace: nextcloud
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: nextcloud
+      version: "6.6.10"
+      sourceRef:
+        kind: HelmRepository
+        name: nextcloud
+        namespace: nextcloud
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    nextcloud:
+      host: nextcloud.jacobbanghart.com
+      existingSecret:
+        enabled: true
+        secretName: nextcloud-admin-secret
+        usernameKey: NEXTCLOUD_ADMIN_USER
+        passwordKey: NEXTCLOUD_ADMIN_PASSWORD
+      extraEnv:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: nextcloud-redis-secret
+              key: REDIS_PASSWORD
+      configs:
+        custom.config.php: |-
+          <?php
+          $CONFIG = array(
+            'trusted_proxies' => ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'],
+            'overwrite.cli.url' => 'https://nextcloud.jacobbanghart.com',
+            'overwritehost' => 'nextcloud.jacobbanghart.com',
+            'overwriteprotocol' => 'https',
+            'memcache.local' => '\OC\Memcache\Redis',
+            'memcache.locking' => '\OC\Memcache\Redis',
+            'redis' => array(
+              'host' => 'redis',
+              'port' => 6379,
+              'password' => getenv('REDIS_PASSWORD'),
+            ),
+          );
+
+    resources:
+      requests:
+        memory: "1024Mi"
+        cpu: "500m"
+      limits:
+        memory: "4Gi"
+        cpu: "4000m"
+
+    nginx:
+      enabled: false
+
+    internalDatabase:
+      enabled: false
+
+    externalDatabase:
+      enabled: true
+      type: postgresql
+      host: postgresql
+      port: 5432
+      existingSecret:
+        enabled: true
+        secretName: nextcloud-postgres-secret
+        usernameKey: POSTGRES_USER
+        passwordKey: POSTGRES_PASSWORD
+        databaseKey: POSTGRES_DB
+
+    persistence:
+      enabled: true
+      existingClaim: nextcloud-app-pvc
+      nextcloudData:
+        enabled: true
+        existingClaim: nextcloud-data-pvc
+
+    livenessProbe:
+      enabled: true
+      initialDelaySeconds: 30
+      periodSeconds: 15
+      timeoutSeconds: 5
+      failureThreshold: 3
+      successThreshold: 1
+
+    readinessProbe:
+      enabled: true
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+      successThreshold: 1
+
+    startupProbe:
+      enabled: true
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 20
+      successThreshold: 1
+
+    extraVolumes:
+      - name: apache-servername
+        configMap:
+          name: nextcloud-apache-config
+    extraVolumeMounts:
+      - name: apache-servername
+        mountPath: /etc/apache2/conf-enabled/servername.conf
+        subPath: servername.conf
+
+    postgresql:
+      enabled: false
+    mariadb:
+      enabled: false
+    redis:
+      enabled: false
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: nextcloud
+  namespace: nextcloud
+  annotations:
+    external-dns.alpha.kubernetes.io/exclude: "true"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`nextcloud.jacobbanghart.com`)
+      kind: Rule
+      services:
+        - name: nextcloud
+          port: 8080
+  tls:
+    secretName: nextcloud-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: nextcloud-tls
+  namespace: nextcloud
+spec:
+  secretName: nextcloud-tls
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - nextcloud.jacobbanghart.com
+  issuerRef:
+    name: letsencrypt-cloudflare
+    kind: ClusterIssuer
+    group: cert-manager.io
