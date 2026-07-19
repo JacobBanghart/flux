@@ -1,0 +1,204 @@
+# Migrated from dev cluster (Wave 4, see k8s-homelab's docs/decisions.md).
+# public/storage data already copied from TrueNAS NFS into ceph-block
+# PVCs. MariaDB data restored from a mysqldump (not raw file copy) --
+# dev's --routines dump failed outright (image.tag: "latest" drifted the
+# live MariaDB version far ahead of its on-disk system tables, which
+# were never migrated via mariadb-upgrade; --skip-routines/--skip-triggers
+# avoided the broken introspection query, safe since this Laravel app
+# doesn't use stored DB routines). Both secrets sourced from Vault via
+# ESO -- verified this app reads DB creds fresh from env vars each pod
+# start rather than caching them in a config file, so no drift risk like
+# Nextcloud's secret had.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: invoice-ninja
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ivpublicpvc
+  namespace: invoice-ninja
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ceph-block
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ivstoragepvc
+  namespace: invoice-ninja
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ceph-block
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: invoice-ninja-mail-secret
+  namespace: invoice-ninja
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: invoice-ninja-mail-secret
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: invoice-ninja/invoice-ninja-mail-secret
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: invoice-ninja-mariadb-auth
+  namespace: invoice-ninja
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: invoice-ninja-mariadb-auth
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: invoice-ninja/invoice-ninja-mariadb-auth
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: invoice-ninja-hc
+  namespace: invoice-ninja
+spec:
+  interval: 1h
+  url: https://invoiceninja.github.io/dockerfiles
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: invoice-ninja-hc
+  namespace: invoice-ninja
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: invoiceninja
+      version: "0.10.2"
+      sourceRef:
+        kind: HelmRepository
+        name: invoice-ninja-hc
+        namespace: invoice-ninja
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    appURL: https://invoice-ninja.jacobbanghart.com
+    mailer: smtp
+    extraEnvVarsSecret: invoice-ninja-mail-secret
+    ingress:
+      hostname: invoice-ninja.jacobbanghart.com
+    http:
+      image:
+        tag: "latest"
+      resources:
+        requests:
+          memory: "512Mi"
+          cpu: "500m"
+        limits:
+          memory: "2Gi"
+          cpu: "2000m"
+    persistence:
+      public:
+        existingClaim: ivpublicpvc
+      storage:
+        existingClaim: ivstoragepvc
+    mariadb:
+      auth:
+        existingSecret: invoice-ninja-mariadb-auth
+      image:
+        tag: "latest"
+      primary:
+        persistence:
+          existingClaim: ivmariapvc
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+    redis:
+      image:
+        tag: "latest"
+      sentinel:
+        image:
+          tag: "latest"
+      resources:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "512Mi"
+          cpu: "1000m"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ivmariapvc
+  namespace: invoice-ninja
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ceph-block
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: invoice-ninja
+  namespace: invoice-ninja
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`invoice-ninja.jacobbanghart.com`)
+      kind: Rule
+      services:
+        - name: invoiceninja-web
+          port: 8080
+  tls:
+    secretName: invoice-ninja-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: invoice-ninja-tls
+  namespace: invoice-ninja
+spec:
+  secretName: invoice-ninja-tls
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - invoice-ninja.jacobbanghart.com
+  issuerRef:
+    name: letsencrypt-cloudflare
+    kind: ClusterIssuer
+    group: cert-manager.io
