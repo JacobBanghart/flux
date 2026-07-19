@@ -18,6 +18,12 @@
 # "MAC is invalid" DecryptException. IN_PASSWORD is deliberately omitted
 # from the Vault secret; it only seeds an initial admin password on a
 # brand-new install and this app already has real migrated users.
+#
+# updateStrategy: Recreate -- ivpublicpvc/ivstoragepvc are ceph-block
+# (RWO, single-attach). Default RollingUpdate tries to schedule the new
+# pod before the old one releases the volume, deadlocking on a
+# FailedAttachVolume multi-attach error. Chart's own values.yaml
+# documents this exact case.
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -135,6 +141,8 @@ spec:
     mailer: smtp
     extraEnvVarsSecret: invoice-ninja-mail-secret
     existingSecret: invoice-ninja-app-secret
+    updateStrategy:
+      type: Recreate
     ingress:
       hostname: invoice-ninja.jacobbanghart.com
     http:
