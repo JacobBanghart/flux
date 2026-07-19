@@ -1,0 +1,155 @@
+# New OAuth/OIDC provider for the homelab (2026-07-19). Public hostname
+# since the goal is eventually fronting other public apps (Nextcloud,
+# Immich, etc.) with SSO, not just internal tools.
+#
+# No Redis/Valkey needed -- recent authentik versions dropped that
+# dependency entirely (Postgres LISTEN/NOTIFY covers what Redis used to
+# do). Postgres is the chart's bundled Bitnami subchart, not a hand-rolled
+# Deployment like Immich's, since authentik doesn't need a custom image.
+#
+# authentik-secret (via Vault/ESO) is shared by both authentik.existingSecret
+# and postgresql.auth.existingSecret (secretKeys.userPasswordKey points at
+# the same AUTHENTIK_POSTGRESQL__PASSWORD key) -- one secret, one source of
+# truth for the DB password instead of keeping two in sync by hand. See
+# k8s-homelab/docs/runbook.md for how to write a new Vault kv path; keys
+# needed here: AUTHENTIK_SECRET_KEY (random, don't rotate after install --
+# it's used for cookie signing and unique user IDs) and
+# AUTHENTIK_POSTGRESQL__PASSWORD (random).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: authentik
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: authentik-secret
+  namespace: authentik
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: authentik-secret
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: authentik/authentik-secret
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: authentik
+  namespace: authentik
+spec:
+  interval: 1h
+  url: https://charts.goauthentik.io
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: authentik
+  namespace: authentik
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: authentik
+      version: "2026.5.5"
+      sourceRef:
+        kind: HelmRepository
+        name: authentik
+        namespace: authentik
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    authentik:
+      existingSecret:
+        secretName: authentik-secret
+      postgresql:
+        host: "authentik-postgresql"
+        name: authentik
+        user: authentik
+        port: 5432
+
+    postgresql:
+      enabled: true
+      auth:
+        username: authentik
+        database: authentik
+        existingSecret: authentik-secret
+        secretKeys:
+          userPasswordKey: AUTHENTIK_POSTGRESQL__PASSWORD
+      primary:
+        persistence:
+          enabled: true
+          storageClass: ceph-block
+          size: 5Gi
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+
+    server:
+      resources:
+        requests:
+          memory: "256Mi"
+          cpu: "200m"
+        limits:
+          memory: "1Gi"
+          cpu: "1000m"
+      ingress:
+        enabled: false
+
+    worker:
+      resources:
+        requests:
+          memory: "256Mi"
+          cpu: "200m"
+        limits:
+          memory: "1Gi"
+          cpu: "1000m"
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: authentik
+  namespace: authentik
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`auth.jacobbanghart.com`)
+      kind: Rule
+      services:
+        - name: authentik-server
+          port: 80
+  tls:
+    secretName: authentik-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: authentik-tls
+  namespace: authentik
+spec:
+  secretName: authentik-tls
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - auth.jacobbanghart.com
+  issuerRef:
+    name: letsencrypt-cloudflare
+    kind: ClusterIssuer
+    group: cert-manager.io
