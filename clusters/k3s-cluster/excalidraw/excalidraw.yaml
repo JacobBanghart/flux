@@ -3,20 +3,13 @@ kind: Namespace
 metadata:
   name: excalidraw
 ---
-# Migrated to k8s-homelab (Wave 1, see k8s-homelab's docs/decisions.md).
-# Scaled to 0 rather than deleted -- fast rollback path if needed. The
-# Ingress below (excalidraw.jacobbanghart.com, dev's external-dns owns
-# this DNS record) was removed so that record releases and
-# k8s-homelab's external-dns can claim it; recreating it here would
-# take DNS back from k8s-homelab on rollback, which is fine and
-# intentional if actually needed.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: excalidraw
   namespace: excalidraw
 spec:
-  replicas: 0
+  replicas: 1
   revisionHistoryLimit: 2
   selector:
     matchLabels:
@@ -64,3 +57,24 @@ spec:
     - port: 5000
       targetPort: 80
       name: excalidraw
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: excalidraw
+  namespace: excalidraw
+  labels:
+    name: excalidraw
+spec:
+  rules:
+    - host: excalidraw.jacobbanghart.com
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: excalidraw
+                port:
+                  number: 5000
