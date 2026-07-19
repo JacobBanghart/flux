@@ -111,11 +111,18 @@ data:
         path: power
         icon: mdi:flash
         cards:
+          # Entity IDs here must be device_name-based (smart_plug_N_*), not
+          # friendly-name-based (jacobs_desktop_smart_plug_*, etc.) -- each
+          # device's discovery_object_id_generator: device_name setting
+          # governs the entity_id MQTT discovery actually assigns, and this
+          # dashboard had drifted out of sync with that (three stale
+          # friendly-name references caused "entity not found" after the
+          # k8s-homelab migration/reflash). Fixed 2026-07-19.
           # All Plugs Overview
           - type: entities
             title: All Smart Plugs
             entities:
-              - entity: switch.jacobs_desktop_smart_plug_outlet_relay
+              - entity: switch.smart_plug_1_outlet_relay
                 name: Jacobs Desktop (confirm before toggling!)
                 tap_action:
                   action: toggle
@@ -127,7 +134,7 @@ data:
                   action: toggle
                   confirmation:
                     text: "This powers Sierra's desktop. Turning it off without a proper shutdown risks data loss. Are you sure?"
-              - entity: switch.home_server_smart_plug_outlet_relay
+              - entity: switch.smart_plug_3_outlet_relay
                 name: Home Server (confirm before toggling!)
                 tap_action:
                   action: toggle
@@ -287,7 +294,7 @@ data:
             title: Server Power (24h)
             hours_to_show: 24
             entities:
-              - entity: sensor.home_server_smart_plug_output_power_watts
+              - entity: sensor.smart_plug_3_output_power_watts
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
