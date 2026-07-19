@@ -35,7 +35,7 @@ spec:
       # Note: OpenSpeedTest requires root to run nginx and modify /etc/nginx
       containers:
         - name: speedtest
-          image: openspeedtest/latest:v2.0.4
+          image: openspeedtest/latest:v2.0.6
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

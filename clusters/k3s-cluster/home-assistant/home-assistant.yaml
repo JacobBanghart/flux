@@ -104,6 +104,24 @@ data:
           - type: entities
             title: All Smart Plugs
             entities:
+              - entity: switch.jacobs_desktop_smart_plug_outlet_relay
+                name: Jacobs Desktop (confirm before toggling!)
+                tap_action:
+                  action: toggle
+                  confirmation:
+                    text: "This powers Jacob's desktop. Turning it off without a proper shutdown risks data loss. Are you sure?"
+              - entity: switch.smart_plug_2_outlet_relay
+                name: Sierras Desktop (confirm before toggling!)
+                tap_action:
+                  action: toggle
+                  confirmation:
+                    text: "This powers Sierra's desktop. Turning it off without a proper shutdown risks data loss. Are you sure?"
+              - entity: switch.home_server_smart_plug_outlet_relay
+                name: Home Server (confirm before toggling!)
+                tap_action:
+                  action: toggle
+                  confirmation:
+                    text: "This powers the home server. Turning it off without a proper shutdown risks data loss/corruption. Are you sure?"
               - entity: switch.smart_plug_4_outlet_relay
 
           # Power readings
@@ -335,7 +353,7 @@ spec:
               mountPath: /config
       containers:
         - name: home-assistant
-          image: ghcr.io/home-assistant/home-assistant:2026.7.1
+          image: ghcr.io/home-assistant/home-assistant:2026.7.2
           ports:
             - containerPort: 8123
               name: http
