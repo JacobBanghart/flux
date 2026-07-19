@@ -1,0 +1,177 @@
+# Migrated from dev cluster (Wave 3, see k8s-homelab's docs/decisions.md).
+# Chart version + image tag pinned to exactly what dev runs (0.10.3 /
+# v3.0.3), same reasoning as the Nextcloud migration -- an unplanned
+# Immich version jump bundled into a data migration is a separate
+# decision. Photo library already copied from TrueNAS NFS into this
+# ceph-block PVC via a one-off migration Job.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: immich
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: immichpvc
+  namespace: immich
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ceph-block
+  resources:
+    requests:
+      storage: 100Gi
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: immich-postgres-secret
+  namespace: immich
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: immich-postgres-secret
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: immich/immich-postgres-secret
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: immich
+  namespace: immich
+spec:
+  interval: 1h
+  url: https://immich-app.github.io/immich-charts
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: immich
+  namespace: immich
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: immich
+      version: "0.10.3"
+      sourceRef:
+        kind: HelmRepository
+        name: immich
+        namespace: immich
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    controllers:
+      main:
+        pod:
+          annotations: {}
+        containers:
+          main:
+            image:
+              tag: v3.0.3
+            resources:
+              requests:
+                memory: "1024Mi"
+                cpu: "500m"
+              limits:
+                memory: "4Gi"
+                cpu: "4000m"
+            env:
+              DB_HOSTNAME: postgresql
+              DB_PORT: "5432"
+              DB_USERNAME:
+                valueFrom:
+                  secretKeyRef:
+                    name: immich-postgres-secret
+                    key: POSTGRES_USER
+              DB_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: immich-postgres-secret
+                    key: POSTGRES_PASSWORD
+              DB_DATABASE_NAME:
+                valueFrom:
+                  secretKeyRef:
+                    name: immich-postgres-secret
+                    key: POSTGRES_DB
+    immich:
+      persistence:
+        library:
+          existingClaim: immichpvc
+      configuration:
+        trash:
+          enabled: true
+          days: 30
+    valkey:
+      enabled: true
+      controllers:
+        main:
+          containers:
+            main:
+              resources:
+                requests:
+                  memory: "128Mi"
+                  cpu: "100m"
+                limits:
+                  memory: "512Mi"
+                  cpu: "1000m"
+    machine-learning:
+      enabled: true
+      controllers:
+        main:
+          containers:
+            main:
+              resources:
+                requests:
+                  memory: "1024Mi"
+                  cpu: "500m"
+                limits:
+                  memory: "8Gi"
+                  cpu: "4000m"
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: immich
+  namespace: immich
+  annotations:
+    external-dns.alpha.kubernetes.io/exclude: "true"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`photos.jacobbanghart.com`)
+      kind: Rule
+      services:
+        - name: immich-server
+          port: 2283
+  tls:
+    secretName: immich-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: immich-tls
+  namespace: immich
+spec:
+  secretName: immich-tls
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - photos.jacobbanghart.com
+  issuerRef:
+    name: letsencrypt-cloudflare
+    kind: ClusterIssuer
+    group: cert-manager.io
