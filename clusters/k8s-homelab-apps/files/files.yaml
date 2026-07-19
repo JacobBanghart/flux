@@ -1,0 +1,172 @@
+# Migrated from dev cluster (Wave 3, see k8s-homelab's docs/decisions.md).
+# Data copied from TrueNAS NFS into these ceph-block PVCs via a one-off
+# migration Job (already run, not part of this GitOps tree). The NFS
+# export used root_squash -- the migration job had to mount as root
+# then drop to uid 1000 (via su-exec) for the actual read/write, matching
+# this app's own runAsUser. Excluded from external-dns and dev's copy
+# left fully live -- public app cutover is a single router-level event.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: files
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: srvfilespvc
+  namespace: files
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ceph-block
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: databasefilespvc
+  namespace: files
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ceph-block
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: configfilespvc
+  namespace: files
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ceph-block
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: files
+  namespace: files
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: files
+  template:
+    metadata:
+      labels:
+        app: files
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+        - name: files
+          image: filebrowser/filebrowser:v2.63.18
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+          args:
+            - --database=/database/filebrowser.db
+            - --config=/config/settings.json
+            - --root=/srv
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              memory: "1024Mi"
+              cpu: "1000m"
+          ports:
+            - containerPort: 80
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - mountPath: /srv
+              name: srvpvc
+            - mountPath: /database
+              name: databasepvc
+            - mountPath: /config
+              name: configpvc
+      volumes:
+        - name: srvpvc
+          persistentVolumeClaim:
+            claimName: srvfilespvc
+        - name: databasepvc
+          persistentVolumeClaim:
+            claimName: databasefilespvc
+        - name: configpvc
+          persistentVolumeClaim:
+            claimName: configfilespvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: files
+  namespace: files
+spec:
+  selector:
+    app: files
+  ports:
+    - port: 80
+      targetPort: 80
+      name: files
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: files
+  namespace: files
+  annotations:
+    external-dns.alpha.kubernetes.io/exclude: "true"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`files.jacobbanghart.com`)
+      kind: Rule
+      services:
+        - name: files
+          port: 80
+  tls:
+    secretName: files-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: files-tls
+  namespace: files
+spec:
+  secretName: files-tls
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - files.jacobbanghart.com
+  issuerRef:
+    name: letsencrypt-cloudflare
+    kind: ClusterIssuer
+    group: cert-manager.io
