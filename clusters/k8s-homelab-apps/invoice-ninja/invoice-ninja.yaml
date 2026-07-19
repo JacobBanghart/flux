@@ -9,6 +9,15 @@
 # ESO -- verified this app reads DB creds fresh from env vars each pod
 # start rather than caching them in a config file, so no drift risk like
 # Nextcloud's secret had.
+#
+# existingSecret: invoice-ninja-app-secret carries dev's original APP_KEY
+# (pulled live from dev's invoice-ninja-hc-invoiceninja secret after
+# resuming the paused VM). Without it, the chart auto-generates a fresh
+# random key on install, which can't decrypt data already encrypted
+# under dev's key in the migrated dump -- broke login with a Laravel
+# "MAC is invalid" DecryptException. IN_PASSWORD is deliberately omitted
+# from the Vault secret; it only seeds an initial admin password on a
+# brand-new install and this app already has real migrated users.
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -56,6 +65,23 @@ spec:
   dataFrom:
     - extract:
         key: invoice-ninja/invoice-ninja-mail-secret
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: invoice-ninja-app-secret
+  namespace: invoice-ninja
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: invoice-ninja-app-secret
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: invoice-ninja/invoice-ninja-app-secret
 ---
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
@@ -108,6 +134,7 @@ spec:
     appURL: https://invoice-ninja.jacobbanghart.com
     mailer: smtp
     extraEnvVarsSecret: invoice-ninja-mail-secret
+    existingSecret: invoice-ninja-app-secret
     ingress:
       hostname: invoice-ninja.jacobbanghart.com
     http:
