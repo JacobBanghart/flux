@@ -1,0 +1,480 @@
+# Migrated from dev cluster (Wave 2, see k8s-homelab's docs/decisions.md).
+# Config data copied from TrueNAS NFS into ceph-block PVCs via a one-off
+# migration Job (already run, not part of this GitOps tree).
+#
+# hostNetwork:true is needed for mDNS discovery of WiFi smart plugs and
+# ESPHome OTA/discovery -- k8s-homelab's workers only have a NIC on the
+# isolated k8s-lab VLAN (30), not the primary/IoT VLAN those devices are
+# on. multicast_dns=true is already enabled on k8s-lab's network
+# (unifi/vlans.tf), which is UniFi's built-in mDNS reflector setting --
+# relies on that for cross-VLAN discovery to actually work; verify
+# empirically after deploy, don't assume.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: home-assistant
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: home-assistant-config
+  namespace: home-assistant
+data:
+  configuration.yaml: |
+    # Loads default set of integrations. Do not remove.
+    default_config:
+
+    # Load frontend themes from the themes folder
+    frontend:
+      themes: !include_dir_merge_named themes
+
+    automation: !include automations.yaml
+    script: !include scripts.yaml
+    scene: !include scenes.yaml
+
+    # HTTP settings for reverse proxy
+    http:
+      use_x_forwarded_for: true
+      trusted_proxies:
+        - 10.0.0.0/8
+        - 172.16.0.0/12
+        - 127.0.0.1
+
+    # Use YAML mode for dashboards (GitOps managed)
+    lovelace:
+      mode: yaml
+      resources: []
+
+    # Utility meters for tracking energy usage over periods
+    utility_meter:
+      # Smart Plug 1 (entity ID uses friendly_name until ESPHome reflash)
+      plug_1_energy_weekly:
+        source: sensor.jacobs_desktop_smart_plug_daily_energy
+        cycle: weekly
+      plug_1_energy_monthly:
+        source: sensor.jacobs_desktop_smart_plug_daily_energy
+        cycle: monthly
+      plug_1_energy_yearly:
+        source: sensor.jacobs_desktop_smart_plug_daily_energy
+        cycle: yearly
+      # Smart Plug 2
+      plug_2_energy_weekly:
+        source: sensor.smart_plug_2_daily_energy
+        cycle: weekly
+      plug_2_energy_monthly:
+        source: sensor.smart_plug_2_daily_energy
+        cycle: monthly
+      plug_2_energy_yearly:
+        source: sensor.smart_plug_2_daily_energy
+        cycle: yearly
+      # Smart Plug 3 (entity ID uses friendly_name until ESPHome reflash)
+      plug_3_energy_weekly:
+        source: sensor.home_server_smart_plug_daily_energy
+        cycle: weekly
+      plug_3_energy_monthly:
+        source: sensor.home_server_smart_plug_daily_energy
+        cycle: monthly
+      plug_3_energy_yearly:
+        source: sensor.home_server_smart_plug_daily_energy
+        cycle: yearly
+      # Smart Plug 4
+      plug_4_energy_weekly:
+        source: sensor.smart_plug_4_daily_energy
+        cycle: weekly
+      plug_4_energy_monthly:
+        source: sensor.smart_plug_4_daily_energy
+        cycle: monthly
+      plug_4_energy_yearly:
+        source: sensor.smart_plug_4_daily_energy
+        cycle: yearly
+
+    # Proxmox VE Integration (binary sensors for VM status only)
+    # On Proxmox: pveum passwd homeassistant@pve (to set password)
+    # Assign permissions: pveum aclmod / -user homeassistant@pve -role PVEAuditor
+    proxmoxve:
+      - host: !secret proxmox_host
+        username: !secret proxmox_username
+        password: !secret proxmox_password
+        verify_ssl: false
+        nodes:
+          - node: prox
+            vms:
+              - 101  # pihole
+              - 102  # dev
+              - 103  # truenas
+              - 104  # ryan
+
+  ui-lovelace.yaml: |
+    title: Power Monitor
+    views:
+      - title: Power Usage
+        path: power
+        icon: mdi:flash
+        cards:
+          # All Plugs Overview
+          - type: entities
+            title: All Smart Plugs
+            entities:
+              - entity: switch.jacobs_desktop_smart_plug_outlet_relay
+                name: Jacobs Desktop (confirm before toggling!)
+                tap_action:
+                  action: toggle
+                  confirmation:
+                    text: "This powers Jacob's desktop. Turning it off without a proper shutdown risks data loss. Are you sure?"
+              - entity: switch.smart_plug_2_outlet_relay
+                name: Sierras Desktop (confirm before toggling!)
+                tap_action:
+                  action: toggle
+                  confirmation:
+                    text: "This powers Sierra's desktop. Turning it off without a proper shutdown risks data loss. Are you sure?"
+              - entity: switch.home_server_smart_plug_outlet_relay
+                name: Home Server (confirm before toggling!)
+                tap_action:
+                  action: toggle
+                  confirmation:
+                    text: "This powers the home server. Turning it off without a proper shutdown risks data loss/corruption. Are you sure?"
+              - entity: switch.smart_plug_4_outlet_relay
+
+          # Power readings
+          - type: entities
+            title: Current Power (Watts)
+            entities:
+              - entity: sensor.smart_plug_1_output_power_watts
+              - entity: sensor.smart_plug_2_output_power_watts
+              - entity: sensor.smart_plug_3_output_power_watts
+              - entity: sensor.smart_plug_4_output_power_watts
+
+          # Power history graph
+          - type: history-graph
+            title: Power Consumption (24h)
+            hours_to_show: 24
+            entities:
+              - entity: sensor.smart_plug_1_output_power_watts
+              - entity: sensor.smart_plug_2_output_power_watts
+              - entity: sensor.smart_plug_3_output_power_watts
+              - entity: sensor.smart_plug_4_output_power_watts
+
+          # Voltage history
+          - type: history-graph
+            title: Voltage (24h)
+            hours_to_show: 24
+            entities:
+              - entity: sensor.smart_plug_1_output_voltage
+              - entity: sensor.smart_plug_2_output_voltage
+              - entity: sensor.smart_plug_3_output_voltage
+              - entity: sensor.smart_plug_4_output_voltage
+
+          # Power gauges
+          - type: horizontal-stack
+            cards:
+              - type: gauge
+                entity: sensor.smart_plug_1_output_power_watts
+                min: 0
+                max: 1800
+                severity:
+                  green: 0
+                  yellow: 500
+                  red: 1000
+              - type: gauge
+                entity: sensor.smart_plug_2_output_power_watts
+                min: 0
+                max: 1800
+                severity:
+                  green: 0
+                  yellow: 500
+                  red: 1000
+          - type: horizontal-stack
+            cards:
+              - type: gauge
+                entity: sensor.smart_plug_3_output_power_watts
+                min: 0
+                max: 1800
+                severity:
+                  green: 0
+                  yellow: 500
+                  red: 1000
+              - type: gauge
+                entity: sensor.smart_plug_4_output_power_watts
+                min: 0
+                max: 1800
+                severity:
+                  green: 0
+                  yellow: 500
+                  red: 1000
+
+      - title: Energy Usage
+        path: energy
+        icon: mdi:lightning-bolt
+        cards:
+          # Daily Energy Summary
+          - type: entities
+            title: Today's Energy (kWh)
+            entities:
+              - entity: sensor.jacobs_desktop_smart_plug_daily_energy
+              - entity: sensor.smart_plug_2_daily_energy
+              - entity: sensor.home_server_smart_plug_daily_energy
+              - entity: sensor.smart_plug_4_daily_energy
+
+          # Weekly Energy
+          - type: entities
+            title: This Week (kWh)
+            entities:
+              - entity: sensor.plug_1_energy_weekly
+                name: Jacobs Desktop Smart Plug
+              - entity: sensor.plug_2_energy_weekly
+                name: Sierras Desktop Smart Plug
+              - entity: sensor.plug_3_energy_weekly
+                name: Home Server Smart Plug
+              - entity: sensor.plug_4_energy_weekly
+                name: Bedroom Lamp Control
+
+          # Monthly Energy
+          - type: entities
+            title: This Month (kWh)
+            entities:
+              - entity: sensor.plug_1_energy_monthly
+                name: Jacobs Desktop Smart Plug
+              - entity: sensor.plug_2_energy_monthly
+                name: Sierras Desktop Smart Plug
+              - entity: sensor.plug_3_energy_monthly
+                name: Home Server Smart Plug
+              - entity: sensor.plug_4_energy_monthly
+                name: Bedroom Lamp Control
+
+          # Yearly Energy
+          - type: entities
+            title: This Year (kWh)
+            entities:
+              - entity: sensor.plug_1_energy_yearly
+                name: Jacobs Desktop Smart Plug
+              - entity: sensor.plug_2_energy_yearly
+                name: Sierras Desktop Smart Plug
+              - entity: sensor.plug_3_energy_yearly
+                name: Home Server Smart Plug
+              - entity: sensor.plug_4_energy_yearly
+                name: Bedroom Lamp Control
+
+          # Energy History Graph
+          - type: history-graph
+            title: Daily Energy (7 days)
+            hours_to_show: 168
+            entities:
+              - entity: sensor.jacobs_desktop_smart_plug_daily_energy
+              - entity: sensor.smart_plug_2_daily_energy
+              - entity: sensor.home_server_smart_plug_daily_energy
+              - entity: sensor.smart_plug_4_daily_energy
+
+      - title: Server Health
+        path: server
+        icon: mdi:server
+        cards:
+          # VMs Status (from Proxmox integration)
+          - type: entities
+            title: Virtual Machines
+            show_header_toggle: false
+            entities:
+              - entity: binary_sensor.prox_pihole
+                name: Pi-hole VM
+              - entity: binary_sensor.prox_dev
+                name: Dev VM
+              - entity: binary_sensor.prox_truenas
+                name: TrueNAS VM
+              - entity: binary_sensor.prox_ryan
+                name: Ryan VM
+
+          # Server Power
+          - type: history-graph
+            title: Server Power (24h)
+            hours_to_show: 24
+            entities:
+              - entity: sensor.home_server_smart_plug_output_power_watts
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: home-assistant-config-pvc
+  namespace: home-assistant
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ceph-block
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: home-assistant
+  namespace: home-assistant
+  labels:
+    app: home-assistant
+spec:
+  ports:
+    - port: 8123
+      targetPort: 8123
+      name: http
+  selector:
+    app: home-assistant
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: home-assistant-secrets
+  namespace: home-assistant
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: home-assistant-secrets
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: home-assistant/home-assistant-secrets
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: home-assistant
+  namespace: home-assistant
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  # NOTE: Recreate is required because hostNetwork: true binds to host port 8123
+  # Rolling updates would cause port conflicts with two pods on the same host
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: home-assistant
+  template:
+    metadata:
+      labels:
+        app: home-assistant
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      initContainers:
+        - name: install-hacs
+          image: alpine:latest
+          command:
+            - sh
+            - -c
+            - |
+              if [ ! -d /config/custom_components/hacs ]; then
+                echo "Installing HACS..."
+                apk add --no-cache wget unzip
+                wget -O /tmp/hacs.zip https://github.com/hacs/integration/releases/latest/download/hacs.zip
+                mkdir -p /config/custom_components/hacs
+                unzip /tmp/hacs.zip -d /config/custom_components/hacs
+                rm /tmp/hacs.zip
+                echo "HACS installed successfully"
+              else
+                echo "HACS already installed"
+              fi
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      containers:
+        - name: home-assistant
+          image: ghcr.io/home-assistant/home-assistant:2026.7.2
+          ports:
+            - containerPort: 8123
+              name: http
+          env:
+            - name: TZ
+              value: "America/Chicago"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: ha-config
+              mountPath: /config/configuration.yaml
+              subPath: configuration.yaml
+            - name: ha-config
+              mountPath: /config/ui-lovelace.yaml
+              subPath: ui-lovelace.yaml
+            - name: ha-secrets
+              mountPath: /config/secrets.yaml
+              subPath: secrets.yaml
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "200m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8123
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8123
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: home-assistant-config-pvc
+        - name: ha-config
+          configMap:
+            name: home-assistant-config
+        - name: ha-secrets
+          secret:
+            secretName: home-assistant-secrets
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: home-assistant
+  namespace: home-assistant
+  annotations:
+    external-dns.alpha.kubernetes.io/exclude: "true"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`home.jacobbanghart.com`)
+      kind: Rule
+      services:
+        - name: home-assistant
+          port: 8123
+  tls:
+    secretName: home-assistant-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: home-assistant-tls
+  namespace: home-assistant
+spec:
+  secretName: home-assistant-tls
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - home.jacobbanghart.com
+  issuerRef:
+    name: letsencrypt-cloudflare
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: home-assistant-pdb
+  namespace: home-assistant
+spec:
+  minAvailable: 0
+  selector:
+    matchLabels:
+      app: home-assistant

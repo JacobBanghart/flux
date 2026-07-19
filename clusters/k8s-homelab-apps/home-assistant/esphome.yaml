@@ -1,0 +1,77 @@
+# See home-assistant.yaml for the hostNetwork/mDNS reasoning -- same
+# applies here (OTA flashing + device discovery).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: esphome-config-pvc
+  namespace: home-assistant
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ceph-block
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: esphome
+  namespace: home-assistant
+  labels:
+    app: esphome
+spec:
+  ports:
+    - port: 6052
+      targetPort: 6052
+      name: http
+  selector:
+    app: esphome
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: esphome
+  namespace: home-assistant
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: esphome
+  template:
+    metadata:
+      labels:
+        app: esphome
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: esphome
+          image: ghcr.io/esphome/esphome:latest
+          ports:
+            - containerPort: 6052
+              name: http
+          env:
+            - name: TZ
+              value: "America/Chicago"
+            - name: ESPHOME_DASHBOARD_USE_PING
+              value: "true"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "200m"
+            limits:
+              memory: "4Gi"
+              cpu: "4000m"
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: esphome-config-pvc
+# Access ESPHome locally only, via whichever k8s-homelab worker the pod
+# lands on (hostNetwork) -- no public ingress, matches dev's setup.
