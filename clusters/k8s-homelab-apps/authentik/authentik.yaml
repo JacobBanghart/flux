@@ -10,11 +10,22 @@
 # authentik-secret (via Vault/ESO) is shared by both authentik.existingSecret
 # and postgresql.auth.existingSecret (secretKeys.userPasswordKey points at
 # the same AUTHENTIK_POSTGRESQL__PASSWORD key) -- one secret, one source of
-# truth for the DB password instead of keeping two in sync by hand. See
-# k8s-homelab/docs/runbook.md for how to write a new Vault kv path; keys
-# needed here: AUTHENTIK_SECRET_KEY (random, don't rotate after install --
-# it's used for cookie signing and unique user IDs) and
-# AUTHENTIK_POSTGRESQL__PASSWORD (random).
+# truth for the DB password instead of keeping two in sync by hand.
+#
+# Setting authentik.existingSecret.secretName makes the chart skip its own
+# secret.yaml template entirely -- which means it *also* skips generating
+# env vars for authentik.postgresql.{host,name,user,port} below (that only
+# happens via the same template, from the whole authentik: values block).
+# Those four aren't secret, but they still have to live in the same Vault
+# path/K8s Secret as AUTHENTIK_SECRET_KEY and AUTHENTIK_POSTGRESQL__PASSWORD,
+# or the server falls back to connecting at localhost:5432 and never comes
+# up. The authentik.postgresql.* values below are effectively documentation
+# at this point, not live config -- the real values must be present as
+# AUTHENTIK_POSTGRESQL__{HOST,NAME,USER,PORT} keys in the Vault secret
+# itself. Full key list needed at authentik/authentik-secret: SECRET_KEY,
+# POSTGRESQL__PASSWORD (both random, don't change SECRET_KEY after
+# install), POSTGRESQL__HOST ("authentik-postgresql"), POSTGRESQL__NAME
+# ("authentik"), POSTGRESQL__USER ("authentik"), POSTGRESQL__PORT ("5432").
 apiVersion: v1
 kind: Namespace
 metadata:
