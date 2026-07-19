@@ -1,0 +1,132 @@
+# Migrated from dev cluster (Wave 2, see k8s-homelab's docs/decisions.md).
+# Data copied from TrueNAS NFS into this ceph-block PVC via a one-off
+# migration Job (already run, not part of this GitOps tree). Excluded
+# from external-dns and dev's copy left fully live -- public app cutover
+# is a single router-level event, not per-app.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mealie
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mealie-data-pvc
+  namespace: mealie
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ceph-block
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mealie
+  namespace: mealie
+spec:
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: mealie
+  template:
+    metadata:
+      labels:
+        app: mealie
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: mealie
+          image: ghcr.io/mealie-recipes/mealie:v3.20.1
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "2048Mi"
+              cpu: "1000m"
+          ports:
+            - containerPort: 9000
+          volumeMounts:
+            - mountPath: /app/data
+              name: mealie-data
+          env:
+            - name: BASE_URL
+              value: https://mealie.jacobbanghart.com/
+          livenessProbe:
+            httpGet:
+              path: /api/app/about
+              port: 9000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/app/about
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: mealie-data
+          persistentVolumeClaim:
+            claimName: mealie-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mealie
+  namespace: mealie
+spec:
+  selector:
+    app: mealie
+  ports:
+    - port: 9000
+      targetPort: 9000
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: mealie
+  namespace: mealie
+  annotations:
+    external-dns.alpha.kubernetes.io/exclude: "true"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`mealie.jacobbanghart.com`)
+      kind: Rule
+      services:
+        - name: mealie
+          port: 9000
+  tls:
+    secretName: mealie-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: mealie-tls
+  namespace: mealie
+spec:
+  secretName: mealie-tls
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - mealie.jacobbanghart.com
+  issuerRef:
+    name: letsencrypt-cloudflare
+    kind: ClusterIssuer
+    group: cert-manager.io
