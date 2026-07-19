@@ -5,9 +5,9 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1m
-  url: ssh://git@gitlab.com/jacobmbanghart/astro-portfolio
+  url: ssh://git@github.com/JacobBanghart/astro-portfolio
   secretRef:
-    name: flux-ssh-key
+    name: flux-github-portfolio
   ref:
     branch: main
 ---
@@ -49,10 +49,8 @@ metadata:
   name: portfolio
   namespace: flux-system
 spec:
-  image: registry.gitlab.com/jacobmbanghart/astro-portfolio
+  image: ghcr.io/jacobbanghart/astro-portfolio
   interval: 5m
-  secretRef:
-    name: regcred
 ---
 apiVersion: image.toolkit.fluxcd.io/v1beta2
 kind: ImagePolicy
