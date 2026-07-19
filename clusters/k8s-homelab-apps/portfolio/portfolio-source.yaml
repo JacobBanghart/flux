@@ -1,0 +1,36 @@
+# Migrated from dev cluster (Wave 4, see k8s-homelab's docs/decisions.md).
+# Points at astro-portfolio's new kustomize/env/k8s-homelab overlay (not
+# the existing prod overlay dev still uses -- separate overlay so
+# k8s-homelab's cert-manager wiring doesn't touch dev's still-active
+# config). No ImageRepository/ImagePolicy/ImageUpdateAutomation here --
+# dev's existing automation already bumps the image tag in git; this
+# cluster just consumes whatever's committed, no need for a second
+# automation instance racing the same repo with a second write-access key.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: portfolio
+  namespace: flux-system
+spec:
+  interval: 1m
+  url: ssh://git@github.com/JacobBanghart/astro-portfolio
+  secretRef:
+    name: portfolio-repo-key
+  ref:
+    branch: main
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: portfolio
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./kustomize/env/k8s-homelab
+  prune: true
+  retryInterval: 2m0s
+  sourceRef:
+    kind: GitRepository
+    name: portfolio
+  timeout: 3m0s
+  wait: true
