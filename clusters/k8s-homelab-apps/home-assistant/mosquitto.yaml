@@ -55,22 +55,30 @@ spec:
         - name: data
           emptyDir: {}
 ---
-# NodePort so IoT-VLAN devices can reach MQTT directly at a worker's IP --
-# same k8s-lab VLAN isolation concern as HA/ESPHome's hostNetwork. Verify
-# reachability empirically after deploy; may need a narrowly-scoped
-# firewall exception (IoT zone -> k8s-lab zone, tcp/31883) matching the
-# pattern used for k8s-lab -> TrueNAS NFS if devices can't reach it.
+# Fixed MetalLB LoadBalancer IP (2026-07-19), not NodePort. Devices were
+# hardcoded on dev to its single-node NodePort address (10.1.0.34:31883)
+# -- on a 6-node cluster, NodePort works from any node's own IP, but that
+# meant devices would need to be pointed at a specific k8s-worker's IP,
+# which isn't stable (pod/node changes, and there's no single "the
+# cluster's IP" the way dev's single node was). A dedicated LB IP out of
+# k8s-lab's MetalLB pool (10.4.0.200-220, Traefik already has .200) gives
+# devices one fixed address independent of which node mosquitto lands on.
+# k8s-lab -> iot firewall direction already covered by the existing
+# Internal -> k8s-lab zone policy (iot has no dedicated zone yet, see
+# k8s-homelab/unifi/firewall.tf) -- this only changes how the broker is
+# addressed, not the firewall path.
 apiVersion: v1
 kind: Service
 metadata:
   name: mosquitto
   namespace: home-assistant
+  annotations:
+    metallb.io/loadBalancerIPs: "10.4.0.201"
 spec:
   selector:
     app: mosquitto
   ports:
     - port: 1883
       targetPort: 1883
-      nodePort: 31883
       name: mqtt
-  type: NodePort
+  type: LoadBalancer
