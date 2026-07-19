@@ -47,9 +47,15 @@ spec:
       labels:
         app: postgresql
     spec:
+      # fsGroup needed alongside runAsUser/Group -- fresh ceph-block
+      # volumes default to root:root ownership, and only fsGroup
+      # triggers kubelet to chown them on mount (dev's NFS-backed
+      # volume didn't have this problem since NFS ownership is
+      # whatever the export already had, not Kubernetes-managed).
       securityContext:
         runAsUser: 70
         runAsGroup: 70
+        fsGroup: 70
       containers:
         - name: postgresql
           image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0
