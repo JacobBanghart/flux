@@ -21,6 +21,23 @@ spec:
     requests:
       storage: 10Gi
 ---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: mealie-oidc
+  namespace: mealie
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: mealie-oidc
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: mealie/oidc
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -28,6 +45,12 @@ metadata:
   namespace: mealie
 spec:
   revisionHistoryLimit: 2
+  # RollingUpdate deadlocks on this RWO ceph-block PVC: a new pod scheduled
+  # on a different node than the old one can't attach the still-attached
+  # volume and never becomes Ready, so the old pod never scales down either
+  # -- hit this for real with immich (2026-07-19), fixing proactively here.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: mealie
@@ -64,6 +87,35 @@ spec:
           env:
             - name: BASE_URL
               value: https://mealie.jacobbanghart.com/
+            - name: OIDC_AUTH_ENABLED
+              value: "true"
+            - name: OIDC_SIGNUP_ENABLED
+              value: "true"
+            - name: OIDC_AUTO_REDIRECT
+              value: "false"
+            - name: OIDC_PROVIDER_NAME
+              value: Authentik
+            - name: OIDC_REMEMBER_ME
+              value: "true"
+            - name: OIDC_USER_CLAIM
+              value: email
+            - name: OIDC_SCOPES_OVERRIDE
+              value: "openid email profile"
+            - name: OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: mealie-oidc
+                  key: OIDC_CLIENT_ID
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: mealie-oidc
+                  key: OIDC_CLIENT_SECRET
+            - name: OIDC_CONFIGURATION_URL
+              valueFrom:
+                secretKeyRef:
+                  name: mealie-oidc
+                  key: OIDC_CONFIGURATION_URL
           livenessProbe:
             httpGet:
               path: /api/app/about
