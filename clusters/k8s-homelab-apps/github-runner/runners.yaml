@@ -62,6 +62,13 @@ spec:
         - self-hosted
         - linux
       dockerEnabled: true
+      # CephFS-backed RWX volumes provision with root:root 0755 at the
+      # mount root; the runner container runs as uid=1001(runner), so
+      # without fsGroup it can't mkdir anything under a fresh volume --
+      # broke every job hitting actions/setup-node with EACCES on
+      # /opt/hostedtoolcache/node (2026-07-20).
+      securityContext:
+        fsGroup: 1001
       resources:
         limits:
           cpu: "4"
