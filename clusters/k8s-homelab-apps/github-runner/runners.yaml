@@ -67,8 +67,18 @@ spec:
       # without fsGroup it can't mkdir anything under a fresh volume --
       # broke every job hitting actions/setup-node with EACCES on
       # /opt/hostedtoolcache/node (2026-07-20).
+      #
+      # fsGroupChangePolicy defaults to "Always", which makes kubelet
+      # recursively chown the whole volume tree on every single pod
+      # mount. With 4 replicas sharing the same RWX volume, concurrent
+      # recursive walks raced each other and hit
+      # "lstat ... no such file or directory" FailedMount errors once
+      # the volume had real content in it. OnRootMismatch skips the walk
+      # once the root dir's group already matches, which it does after
+      # the first fix -- no more redundant/racy chowns on remount.
       securityContext:
         fsGroup: 1001
+        fsGroupChangePolicy: OnRootMismatch
       resources:
         limits:
           cpu: "4"
