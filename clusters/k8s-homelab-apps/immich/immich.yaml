@@ -140,6 +140,12 @@ spec:
           name: immich-oauth-config
       controllers:
         main:
+          # Default RollingUpdate deadlocks on this RWO ceph-block PVC: the
+          # new pod can land on a different node than the old one, can't
+          # attach the still-attached volume, and never becomes Ready --
+          # so the old pod is never scaled down either. Hit this for real
+          # during the OIDC config rollout (2026-07-19).
+          strategy: Recreate
           containers:
             main:
               env:
