@@ -26,6 +26,16 @@
 # POSTGRESQL__PASSWORD (both random, don't change SECRET_KEY after
 # install), POSTGRESQL__HOST ("authentik-postgresql"), POSTGRESQL__NAME
 # ("authentik"), POSTGRESQL__USER ("authentik"), POSTGRESQL__PORT ("5432").
+#
+# OAuth/OIDC clients registered against this Authentik instance: first
+# (and currently only) one is Vault, wired up via Vault's built-in oidc
+# auth method on the k8s-homelab cluster. That config -- and the
+# Authentik-side OAuth2 Provider/Application, which only exists in
+# Authentik's own DB since it was created via the web UI, not as code
+# here -- is documented in the k8s-homelab repo, not this one:
+# k8s-homelab/docs/runbook.md ("OIDC auth method (Authentik SSO)" under
+# the Vault section) and k8s-homelab/docs/decisions.md (the bugs hit
+# setting it up).
 apiVersion: v1
 kind: Namespace
 metadata:
