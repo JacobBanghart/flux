@@ -39,6 +39,31 @@ spec:
     - extract:
         key: immich/immich-postgres-secret
 ---
+# Immich's system config (including OAuth client secret) is delivered as a
+# file via IMMICH_CONFIG_FILE, which locks the equivalent settings out of
+# the admin UI ("Config is currently set by a config file"). The chart's
+# own `immich.configuration` value only ever renders a plaintext ConfigMap
+# (see immich-charts templates/immich-config.yml) with no secret-backed
+# option, so instead of using that we mount this ExternalSecret-synced
+# Secret at the same /config path the chart would have used, keeping the
+# OAuth client secret out of git like every other credential in this repo.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: immich-oauth-config
+  namespace: immich
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: immich-oauth-config
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: immich/oauth-config
+---
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
@@ -107,10 +132,18 @@ spec:
       persistence:
         library:
           existingClaim: immichpvc
-      configuration:
-        trash:
+    server:
+      persistence:
+        config:
           enabled: true
-          days: 30
+          type: secret
+          name: immich-oauth-config
+      controllers:
+        main:
+          containers:
+            main:
+              env:
+                IMMICH_CONFIG_FILE: /config/immich-config.yaml
     valkey:
       enabled: true
       controllers:
