@@ -164,3 +164,34 @@ spec:
     name: letsencrypt-cloudflare
     kind: ClusterIssuer
     group: cert-manager.io
+---
+# external-dns's --source=traefik-proxy cannot generate endpoints from
+# hand-written IngressRoute CRDs on this cluster (confirmed via debug
+# logs: "No endpoints could be generated from Host <ns>/<name>" for
+# every IngressRoute checked, including already-working apps like
+# invoice-ninja -- those only get real DNS because their Helm chart
+# also creates its own plain Ingress, which the "ingress" source DOES
+# handle; everything else public still resolves only because its
+# Cloudflare record predates this cluster's external-dns entirely,
+# carried over unmanaged from dev). This Ingress exists purely so
+# external-dns has something to key off of -- Traefik still routes via
+# the IngressRoute above and cert-manager's Certificate above still
+# issues the cert; this adds no new traffic path, just a DNS source.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: authentik-dns
+  namespace: authentik
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: auth.jacobbanghart.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: authentik-server
+                port:
+                  number: 80
