@@ -1,0 +1,77 @@
+# Same fix as k8s-homelab's grafana-postgres (see that repo's
+# docs/decisions.md, 2026-07-21/22 entries): the bundled Bitnami
+# postgresql subchart in authentik.yaml is a single-replica RWO
+# StatefulSet, so a node drain stalls the DB (and therefore all of
+# Authentik -- login for Grafana and Vault included, not just this
+# app) the same way Grafana's RWO PVC used to. CNPG's operator/CRDs
+# already exist cluster-wide (installed via k8s-homelab's
+# clusters/k8s-homelab/cnpg/), so this just adds a Cluster instance
+# here, co-located with the app it serves rather than in the
+# k8s-homelab repo, since Authentik itself is governed by this repo's
+# flux-apps Kustomization, not k8s-homelab's.
+#
+# authentik-postgres-app-secret intentionally carries the *same*
+# username/password Authentik already uses (from the same Vault path
+# as authentik-secret, authentik/authentik-secret) rather than letting
+# CNPG auto-generate new ones -- cutover then only requires changing
+# AUTHENTIK_POSTGRESQL__HOST in Vault, no credential rotation, no
+# secondary place for the password to drift out of sync.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: authentik-postgres-app-secret
+  namespace: authentik
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: authentik-postgres-app-secret
+    creationPolicy: Owner
+    template:
+      type: kubernetes.io/basic-auth
+      data:
+        username: "{{ .username }}"
+        password: "{{ .password }}"
+  data:
+    - secretKey: username
+      remoteRef:
+        key: authentik/authentik-secret
+        property: AUTHENTIK_POSTGRESQL__USER
+    - secretKey: password
+      remoteRef:
+        key: authentik/authentik-secret
+        property: AUTHENTIK_POSTGRESQL__PASSWORD
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: authentik-postgres
+  namespace: authentik
+spec:
+  instances: 3
+
+  affinity:
+    enablePodAntiAffinity: true
+    topologyKey: kubernetes.io/hostname
+    podAntiAffinityType: required
+
+  storage:
+    storageClass: ceph-block
+    size: 5Gi
+
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+  bootstrap:
+    initdb:
+      database: authentik
+      owner: authentik
+      secret:
+        name: authentik-postgres-app-secret
