@@ -91,10 +91,10 @@ metadata:
   # counterpart, so there is nothing to flip. Excluding it would just mean the
   # app never gets a record at all.
   #
-  # external-dns will create labels.jacobbanghart.com -> 10.4.0.200 (the Traefik
-  # LoadBalancer VIP), the same as auth.jacobbanghart.com. That is a private
-  # address in public DNS, which is the established pattern here: it resolves
-  # for LAN clients and is inert from the internet.
+  # The A record is pinned to the WAN address on the Ingress below. Left to
+  # itself external-dns publishes the Traefik LoadBalancer VIP (10.4.0.200),
+  # which is fine for the LAN-only apps here but makes this one resolve to an
+  # RFC1918 address for everyone off the network -- see that annotation.
 spec:
   entryPoints:
     - websecure
@@ -123,6 +123,23 @@ kind: Ingress
 metadata:
   name: label-designer-dns
   namespace: label-designer
+  annotations:
+    # Publish the WAN address, not the Traefik LoadBalancer VIP.
+    #
+    # external-dns defaults to the Ingress status IP, which on this cluster is
+    # a MetalLB VIP on VLAN 30 -- an RFC1918 address. Published to public DNS
+    # that resolves fine on the LAN and is unreachable from anywhere else, so
+    # the site looked deployed while being dead to the internet.
+    #
+    # The old k3s cluster avoided this by declaring the node's ExternalIP,
+    # which external-dns picked up; the MetalLB LoadBalancer here supersedes
+    # that, so the target is stated explicitly instead.
+    #
+    # WAN:443 is forwarded to 10.4.0.200 by unifi_port_forward.dev_https in
+    # UnifiTerraform/port_forwards.tf, so this address does reach Traefik.
+    # It is a residential IP: if the ISP ever changes it, this line and the
+    # apex record both need updating.
+    external-dns.alpha.kubernetes.io/target: "68.170.78.3"
 spec:
   ingressClassName: traefik
   rules:
