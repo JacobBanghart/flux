@@ -79,13 +79,18 @@ kind: IngressRoute
 metadata:
   name: label-designer
   namespace: label-designer
-  annotations:
-    # Public traffic cutover is a single router-level event (one shared
-    # port-forward rule -> Traefik, not per-app DNS -- see docs/decisions.md),
-    # not per-app. Keep this excluded from external-dns until that real
-    # cutover happens, or it'll flip the live public DNS record to this
-    # cluster -- already caused a live outage this way, twice.
-    external-dns.alpha.kubernetes.io/exclude: "true"
+  # NOT excluded from external-dns, unlike most apps here.
+  #
+  # The exclusion elsewhere exists to stop external-dns flipping an EXISTING
+  # live record away from the old dev Traefik before that cluster is out of the
+  # path. This hostname is new: no record exists and there is no old-cluster
+  # counterpart, so there is nothing to flip. Excluding it would just mean the
+  # app never gets a record at all.
+  #
+  # external-dns will create labels.jacobbanghart.com -> 10.4.0.200 (the Traefik
+  # LoadBalancer VIP), the same as auth.jacobbanghart.com. That is a private
+  # address in public DNS, which is the established pattern here: it resolves
+  # for LAN clients and is inert from the internet.
 spec:
   entryPoints:
     - websecure
