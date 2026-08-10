@@ -103,6 +103,36 @@ spec:
   tls:
     secretName: label-designer-tls
 ---
+# Companion Ingress, purely so external-dns publishes a record.
+#
+# external-dns is configured with sources [ingress, service, traefik-proxy], but
+# Traefik IngressRoute CRDs carry no status address, so the traefik-proxy source
+# yields no target and external-dns ignores them entirely. Every hostname it
+# actually owns here comes from a plain Ingress -- auth.jacobbanghart.com's TXT
+# record reads `external-dns/resource=ingress/authentik/authentik-dns`.
+#
+# Traefik serves the traffic via the IngressRoute above (which owns the TLS
+# config); this object exists only to give external-dns something to publish,
+# mirroring the authentik-dns pattern.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: label-designer-dns
+  namespace: label-designer
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: labels.jacobbanghart.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: label-designer
+                port:
+                  number: 80
+            path: /
+            pathType: Prefix
+---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
