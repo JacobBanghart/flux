@@ -1,0 +1,118 @@
+# Label Designer -- browser canvas editor for thermal printer labels.
+# Source: https://github.com/JacobBanghart/label-designer
+#
+# Entirely client-side: no backend, no database, no secrets, no persistence
+# beyond the visitor's own browser storage. That is why there is no PVC, no
+# ExternalSecret, and no ConfigMap here -- the pod serves static files and
+# nothing else.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: label-designer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: label-designer
+  namespace: label-designer
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: label-designer
+  template:
+    metadata:
+      labels:
+        app: label-designer
+    spec:
+      containers:
+        - name: label-designer
+          # Built and published by .github/workflows/publish.yml in the app repo.
+          image: ghcr.io/jacobbanghart/label-designer:latest
+          # Static nginx; modest requests are genuinely enough.
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          ports:
+            # nginx-unprivileged runs as uid 101 and listens on 8080.
+            - containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false # nginx writes its temp/pid files
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: label-designer
+  namespace: label-designer
+spec:
+  selector:
+    app: label-designer
+  ports:
+    - port: 80
+      targetPort: 8080
+      name: http
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: label-designer
+  namespace: label-designer
+  annotations:
+    # Public traffic cutover is a single router-level event (one shared
+    # port-forward rule -> Traefik, not per-app DNS -- see docs/decisions.md),
+    # not per-app. Keep this excluded from external-dns until that real
+    # cutover happens, or it'll flip the live public DNS record to this
+    # cluster -- already caused a live outage this way, twice.
+    external-dns.alpha.kubernetes.io/exclude: "true"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`labels.jacobbanghart.com`)
+      kind: Rule
+      services:
+        - name: label-designer
+          port: 80
+  tls:
+    secretName: label-designer-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: label-designer-tls
+  namespace: label-designer
+spec:
+  secretName: label-designer-tls
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - labels.jacobbanghart.com
+  issuerRef:
+    name: letsencrypt-cloudflare
+    kind: ClusterIssuer
+    group: cert-manager.io
