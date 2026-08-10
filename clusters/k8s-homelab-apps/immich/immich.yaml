@@ -182,6 +182,13 @@ kind: IngressRoute
 metadata:
   name: immich
   namespace: immich
+  annotations:
+    # An IngressRoute carries no LoadBalancer status, so the traefik source has
+    # no address to derive a target from -- and external-dns drops a hostname
+    # with zero targets before --default-targets is ever consulted, which only
+    # rewrites endpoints that already exist. Without this the app gets no
+    # record at all, silently.
+    external-dns.alpha.kubernetes.io/target: "68.170.78.3"
 spec:
   entryPoints:
     - websecure
