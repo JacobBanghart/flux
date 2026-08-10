@@ -1,0 +1,157 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: homestead
+---
+# CurseForge API key, needed by AUTO_CURSEFORGE to download the pack server
+# files. On the old k3s cluster this was a plain Secret; k8s-homelab pulls
+# secrets from Vault via External Secrets, so the Vault key
+# `minecraft/curseforge` must contain a `CF_API_KEY` field or the pod will
+# fail to start with an auth error from CurseForge.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: curseforge-api-key
+  namespace: homestead
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: curseforge-api-key
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: minecraft/curseforge
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: homestead-pvc
+  namespace: homestead
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  # ceph-block, not the old cluster's nfs-rwx: k8s-homelab stores PVCs on Rook
+  # Ceph. RWO is correct here -- a Minecraft server is strictly single-writer,
+  # and RWO on ceph-block is markedly faster for chunk I/O than shared RWX.
+  # Requires strategy: Recreate below, since RWO can't be mounted by an old and
+  # new pod simultaneously during a rollout.
+  storageClassName: ceph-block
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homestead
+  namespace: homestead
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: homestead
+  template:
+    metadata:
+      labels:
+        app: homestead
+    spec:
+      containers:
+        - name: minecraft
+          # java17, not the atm10 manifest's java21: Homestead is Minecraft
+          # 1.20.1, which targets Java 17. Fabric on 1.20.1 mostly tolerates 21,
+          # but mods built against 17 can break in subtle ways -- no reason to
+          # take that risk when the matching runtime is available.
+          image: itzg/minecraft-server:java17
+          imagePullPolicy: Always
+          stdin: true
+          tty: true
+          # Sized for this cluster, NOT copied from atm10. The old dev server was
+          # a single 220-vCPU / 94 GB VM, so atm10 could ask for 64 cores and a
+          # 64 GB heap. k8s-homelab workers are 20 cores / 15 GB RAM each, so
+          # those numbers are unschedulable here. 8 GB heap inside a 10 Gi limit
+          # leaves headroom for metaspace/off-heap and still fits a worker with
+          # room to spare -- ample for a ~1.20.1 cozy pack.
+          resources:
+            requests:
+              cpu: "2"
+              memory: "6Gi"
+            limits:
+              cpu: "8"
+              memory: "10Gi"
+          ports:
+            - containerPort: 25565
+              protocol: TCP
+          env:
+            - name: EULA
+              value: "TRUE"
+            - name: MODPACK_PLATFORM
+              value: "AUTO_CURSEFORGE"
+            - name: CF_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: curseforge-api-key
+                  key: CF_API_KEY
+            - name: CF_PAGE_URL
+              value: "https://www.curseforge.com/minecraft/modpacks/homestead-cozy"
+            # Pinned to the current release (1.3.7, 2026-05-18) rather than
+            # tracking latest, so a pack update can't silently change the world's
+            # mod set on a pod restart. Bump deliberately.
+            - name: CF_FILENAME_MATCHER
+              value: "1.3.7"
+            - name: MODE
+              value: "survival"
+            - name: ALLOW_FLIGHT
+              value: "TRUE"
+            - name: OPS
+              value: "Jqwop"
+            - name: INIT_MEMORY
+              value: "4G"
+            - name: MAX_MEMORY
+              value: "8G"
+            # Only ActiveProcessorCount is set, pinned to the CPU limit. Without
+            # it the JVM sees all 20 of the node's cores and sizes its GC thread
+            # pools for hardware the cgroup won't give it. Aikar's flags derive
+            # the rest, so the explicit ParallelGCThreads/ConcGCThreads from the
+            # atm10 manifest are deliberately not carried over.
+            - name: JVM_XX_OPTS
+              value: "-XX:ActiveProcessorCount=8"
+            - name: USE_AIKAR_FLAGS
+              value: "true"
+          volumeMounts:
+            - mountPath: /data
+              name: homestead-pvc
+      volumes:
+        - name: homestead-pvc
+          persistentVolumeClaim:
+            claimName: homestead-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: homestead
+  namespace: homestead
+  # No external-dns.alpha.kubernetes.io/hostname annotation, unlike the atm10
+  # manifest. external-dns does run here (--source=service, Cloudflare,
+  # domain-filter jacobbanghart.com), so the annotation would take effect -- but
+  # it would publish this private MetalLB IP into public DNS, which helps nobody:
+  # external players connect to the WAN address, not 10.4.0.202. No other
+  # LoadBalancer on this cluster is annotated either (mosquitto/traefik are not).
+  # Players reach this through the UDM port forward on WAN 25566
+  # (UnifiTerraform/port_forwards.tf).
+  annotations:
+    metallb.io/loadBalancerIPs: "10.4.0.202"
+spec:
+  type: LoadBalancer
+  selector:
+    app: homestead
+  ports:
+    - port: 25565
+      targetPort: 25565
+      protocol: TCP
+      name: minecraft
