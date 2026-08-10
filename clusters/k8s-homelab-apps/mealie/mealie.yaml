@@ -150,8 +150,6 @@ kind: IngressRoute
 metadata:
   name: mealie
   namespace: mealie
-  annotations:
-    external-dns.alpha.kubernetes.io/exclude: "true"
 spec:
   entryPoints:
     - websecure

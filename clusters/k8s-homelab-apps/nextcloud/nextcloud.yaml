@@ -237,8 +237,6 @@ kind: IngressRoute
 metadata:
   name: nextcloud
   namespace: nextcloud
-  annotations:
-    external-dns.alpha.kubernetes.io/exclude: "true"
 spec:
   entryPoints:
     - websecure

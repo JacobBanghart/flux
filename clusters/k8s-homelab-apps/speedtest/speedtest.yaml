@@ -86,8 +86,6 @@ kind: IngressRoute
 metadata:
   name: speedtest
   namespace: speedtest
-  annotations:
-    external-dns.alpha.kubernetes.io/exclude: "true"
 spec:
   entryPoints:
     - websecure

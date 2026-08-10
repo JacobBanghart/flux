@@ -121,8 +121,6 @@ kind: IngressRoute
 metadata:
   name: vaultwarden
   namespace: vaultwarden
-  annotations:
-    external-dns.alpha.kubernetes.io/exclude: "true"
 spec:
   entryPoints:
     - websecure

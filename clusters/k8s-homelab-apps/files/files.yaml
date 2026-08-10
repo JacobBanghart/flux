@@ -138,8 +138,6 @@ kind: IngressRoute
 metadata:
   name: files
   namespace: files
-  annotations:
-    external-dns.alpha.kubernetes.io/exclude: "true"
 spec:
   entryPoints:
     - websecure

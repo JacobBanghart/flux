@@ -442,8 +442,6 @@ kind: IngressRoute
 metadata:
   name: home-assistant
   namespace: home-assistant
-  annotations:
-    external-dns.alpha.kubernetes.io/exclude: "true"
 spec:
   entryPoints:
     - websecure
