@@ -74,20 +74,30 @@ spec:
           # Sized for this cluster, NOT copied from atm10 (which asked for 64
           # cores / 64 Gi against the old 220-vCPU, 94 GB dev server).
           #
-          # Revised 2026-08-09 after the first sizing caused a node-level OOM.
-          # The original 8 G heap inside a 10 Gi limit looked safe against the
-          # ~14.5 Gi allocatable measured at deploy time -- but these workers
-          # have memory ballooning with a floor (see k8s-homelab
-          # docs/decisions.md, "VM memory: ballooning with a floor"), and the
-          # balloon had deflated them from 29 G to ~16 G. As the JVM grew toward
-          # its limit the node ran out of memory and the kernel OOM-killed java,
-          # taking k8s-worker-2 NotReady with it. A container limit is not a
-          # safety margin when the node itself can shrink underneath it.
+          # Revised 2026-08-09 after the first sizing caused a node-level OOM:
+          # the kernel killed java and took k8s-worker-2 NotReady, dropping
+          # every player.
+          #
+          # Cause was memory *overcommit*, not a shrinking node. Workers have
+          # 14.53 Gi allocatable, and every one also runs two Ceph OSDs, a mon,
+          # and their log-collector sidecars. An 8 G heap in a 10 Gi limit put
+          # the node's total limits at ~150% of allocatable; requests were only
+          # ~61%, so the scheduler was happy while the actual peak had nowhere
+          # to go. The JVM grew into memory Ceph needed and the kernel picked
+          # java as the victim.
+          #
+          # Note the scheduler only ever enforces *requests*. On a node this
+          # small, a limit far above the request is not headroom -- it is a
+          # promise the node cannot keep. Keep limit close to request here.
           #
           # Now: 5 G heap in a 7 Gi limit (~1.5 Gi covers metaspace, thread
-          # stacks, direct buffers and GC structures), requests raised to a
-          # realistic floor so the scheduler reserves what this actually uses.
-          # Ample for a 1.20.1 cozy pack with a handful of players.
+          # stacks, direct buffers and GC structures), request raised to 5 Gi so
+          # the scheduler reserves roughly what this really uses. Ample for a
+          # 1.20.1 cozy pack with a handful of players; observed 4.06 GiB in use
+          # once loaded. The node is still ~129% committed on limits even after
+          # this, which is inherent to co-locating a game server with Ceph on
+          # 3 workers -- if it OOMs again, drop this limit toward the request
+          # rather than raising it.
           resources:
             requests:
               cpu: "2"
