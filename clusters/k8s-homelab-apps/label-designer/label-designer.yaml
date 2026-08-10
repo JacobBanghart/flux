@@ -34,7 +34,7 @@ spec:
           # this manifest, so Flux would have nothing to reconcile and the
           # cluster would silently keep running the old image. Bump this line to
           # deploy.
-          image: ghcr.io/jacobbanghart/label-designer:sha-0554d61ed3b6b78b9d862fab6f22354ccd45735a
+          image: ghcr.io/jacobbanghart/label-designer:sha-194eb3f57ccd7850a01c1289cf5438656cfae751
           # Static nginx; modest requests are genuinely enough.
           resources:
             requests:
