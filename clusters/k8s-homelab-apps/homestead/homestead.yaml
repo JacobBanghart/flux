@@ -71,19 +71,30 @@ spec:
           imagePullPolicy: Always
           stdin: true
           tty: true
-          # Sized for this cluster, NOT copied from atm10. The old dev server was
-          # a single 220-vCPU / 94 GB VM, so atm10 could ask for 64 cores and a
-          # 64 GB heap. k8s-homelab workers are 20 cores / 15 GB RAM each, so
-          # those numbers are unschedulable here. 8 GB heap inside a 10 Gi limit
-          # leaves headroom for metaspace/off-heap and still fits a worker with
-          # room to spare -- ample for a ~1.20.1 cozy pack.
+          # Sized for this cluster, NOT copied from atm10 (which asked for 64
+          # cores / 64 Gi against the old 220-vCPU, 94 GB dev server).
+          #
+          # Revised 2026-08-09 after the first sizing caused a node-level OOM.
+          # The original 8 G heap inside a 10 Gi limit looked safe against the
+          # ~14.5 Gi allocatable measured at deploy time -- but these workers
+          # have memory ballooning with a floor (see k8s-homelab
+          # docs/decisions.md, "VM memory: ballooning with a floor"), and the
+          # balloon had deflated them from 29 G to ~16 G. As the JVM grew toward
+          # its limit the node ran out of memory and the kernel OOM-killed java,
+          # taking k8s-worker-2 NotReady with it. A container limit is not a
+          # safety margin when the node itself can shrink underneath it.
+          #
+          # Now: 5 G heap in a 7 Gi limit (~1.5 Gi covers metaspace, thread
+          # stacks, direct buffers and GC structures), requests raised to a
+          # realistic floor so the scheduler reserves what this actually uses.
+          # Ample for a 1.20.1 cozy pack with a handful of players.
           resources:
             requests:
               cpu: "2"
-              memory: "6Gi"
+              memory: "5Gi"
             limits:
-              cpu: "8"
-              memory: "10Gi"
+              cpu: "6"
+              memory: "7Gi"
           ports:
             - containerPort: 25565
               protocol: TCP
@@ -111,16 +122,16 @@ spec:
             - name: OPS
               value: "Jqwop"
             - name: INIT_MEMORY
-              value: "4G"
+              value: "2G"
             - name: MAX_MEMORY
-              value: "8G"
+              value: "5G"
             # Only ActiveProcessorCount is set, pinned to the CPU limit. Without
             # it the JVM sees all 20 of the node's cores and sizes its GC thread
             # pools for hardware the cgroup won't give it. Aikar's flags derive
             # the rest, so the explicit ParallelGCThreads/ConcGCThreads from the
             # atm10 manifest are deliberately not carried over.
             - name: JVM_XX_OPTS
-              value: "-XX:ActiveProcessorCount=8"
+              value: "-XX:ActiveProcessorCount=6"
             - name: USE_AIKAR_FLAGS
               value: "true"
           volumeMounts:
