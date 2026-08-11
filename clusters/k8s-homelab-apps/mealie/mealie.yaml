@@ -89,8 +89,13 @@ spec:
               value: https://mealie.jacobbanghart.com/
             - name: OIDC_AUTH_ENABLED
               value: "true"
+            # false: mealie is published publicly, so an Authentik login
+            # must not mint a Mealie account on the fly. Password signup was
+            # already off (the API reports allowSignup: false); this closes
+            # the OIDC path too. Existing users keep logging in normally --
+            # onboard someone new by creating their Mealie user first.
             - name: OIDC_SIGNUP_ENABLED
-              value: "true"
+              value: "false"
             - name: OIDC_AUTO_REDIRECT
               value: "false"
             - name: OIDC_PROVIDER_NAME
