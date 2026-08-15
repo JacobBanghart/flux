@@ -90,21 +90,33 @@ spec:
           # small, a limit far above the request is not headroom -- it is a
           # promise the node cannot keep. Keep limit close to request here.
           #
-          # Now: 5 G heap in a 7 Gi limit (~1.5 Gi covers metaspace, thread
-          # stacks, direct buffers and GC structures), request raised to 5 Gi so
-          # the scheduler reserves roughly what this really uses. Ample for a
-          # 1.20.1 cozy pack with a handful of players; observed 4.06 GiB in use
-          # once loaded. The node is still ~129% committed on limits even after
-          # this, which is inherent to co-locating a game server with Ceph on
-          # 3 workers -- if it OOMs again, drop this limit toward the request
-          # rather than raising it.
+          # Revised again 2026-08-15. The 5 G heap ran at 6612 Mi -- 94% of the
+          # 7 Gi limit -- with no OOM kills but constant GC pressure, which
+          # players feel as lag rather than crashes.
+          #
+          # The 14.53 Gi figure above is out of date. The workers were rebuilt
+          # onto 24576 MB VMs, so allocatable is now ~22.9 Gi. That removes the
+          # condition that caused the 2026-08-09 OOM: the earlier 8 G heap
+          # failed because the node was small and limits sat at ~150% of
+          # allocatable, not because 8 G is wrong in itself.
+          #
+          # Now: 8 G heap, request 10 Gi, limit 11 Gi. The request is set to
+          # roughly the real peak (8 G heap + ~1.5 Gi JVM overhead) so the
+          # scheduler actually reserves it, and the limit stays close to the
+          # request per the rule above -- the lesson from the OOM was "keep the
+          # gap small", not "never raise it".
+          #
+          # A 10 Gi request only fits on a rebuilt 24 GB worker, so this also
+          # pins it there by arithmetic without a nodeSelector. Check headroom
+          # before raising further: kubectl describe nodes | grep -A6 "Allocated
+          # resources". If it OOMs, close the request/limit gap first.
           resources:
             requests:
               cpu: "2"
-              memory: "5Gi"
+              memory: "10Gi"
             limits:
               cpu: "6"
-              memory: "7Gi"
+              memory: "11Gi"
           ports:
             - containerPort: 25565
               protocol: TCP
@@ -134,7 +146,7 @@ spec:
             - name: INIT_MEMORY
               value: "2G"
             - name: MAX_MEMORY
-              value: "5G"
+              value: "8G"
             # Only ActiveProcessorCount is set, pinned to the CPU limit. Without
             # it the JVM sees all 20 of the node's cores and sizes its GC thread
             # pools for hardware the cgroup won't give it. Aikar's flags derive
