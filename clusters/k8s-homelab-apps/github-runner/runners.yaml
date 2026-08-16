@@ -53,16 +53,16 @@ spec:
         - JacobBanghart/BackToSafety
 ---
 # Runner for ReclaimerGold/Ferrix -- capped at 4 cores / 4Gi per runner.
-# Fixed replicas: HRA not viable since ARC 0.23.x's HRA always uses the
-# controller's default installation, which can't cross org boundaries
-# to ReclaimerGold (see githubAPICredentialsFrom below).
+#
+# Autoscaled by ferrix-runner-autoscaler below. Deliberately no
+# `replicas:` here -- the HRA writes that field, so pinning it in git
+# would make Flux reset it every reconcile and fight the autoscaler.
 apiVersion: actions.summerwind.dev/v1alpha1
 kind: RunnerDeployment
 metadata:
   name: ferrix-runner
   namespace: actions-runner-system
 spec:
-  replicas: 4
   template:
     spec:
       repository: ReclaimerGold/rdn-pve-manager
@@ -158,6 +158,50 @@ spec:
         - name: npm-cache
           persistentVolumeClaim:
             claimName: ferrix-npm-cache
+---
+# Restores autoscaling for ferrix, dropped in 45d271c (2026-06-25) on the
+# grounds that "ARC 0.23.x HRA always uses the controller installation,
+# which can't cross org boundaries to ReclaimerGold". The installed HRA
+# CRD does expose githubAPICredentialsFrom, so the HRA can authenticate
+# as the same GitHub App the RunnerDeployment uses -- see below.
+#
+# Metric is PercentageRunnersBusy, NOT the
+# TotalNumberOfQueuedAndInProgressWorkflowRuns the original HRA used.
+# That metric counts workflow *runs*, not jobs: the CI workflow here is
+# a single run containing 11 jobs, so it would compute desired=1 and
+# scale *down* below the old fixed 4 while jobs sat queued.
+# PercentageRunnersBusy reacts to actual runner saturation instead.
+#
+# minReplicas 2 keeps a warm pool so the first jobs of a push start
+# immediately. maxReplicas 12 covers the 11-job workflow with one spare;
+# at 128Mi requests each that's only ~1.5Gi of reservation across three
+# workers, though the 4Gi limits mean a full fan-out can still bite if
+# every job peaks at once.
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: HorizontalRunnerAutoscaler
+metadata:
+  name: ferrix-runner-autoscaler
+  namespace: actions-runner-system
+spec:
+  scaleTargetRef:
+    name: ferrix-runner
+  minReplicas: 2
+  maxReplicas: 12
+  # ARC's sync period is 1m, so scale-up steps once a minute. Doubling
+  # gets 2 -> 4 -> 8 -> 12 rather than crawling up one at a time.
+  scaleDownDelaySecondsAfterScaleOut: 300
+  metrics:
+    - type: PercentageRunnersBusy
+      scaleUpThreshold: "0.75"
+      scaleDownThreshold: "0.25"
+      scaleUpFactor: "2"
+      scaleDownFactor: "0.5"
+  # Without this the HRA falls back to the controller's default
+  # credentials, which have no access to the ReclaimerGold org -- the
+  # exact failure that got the original autoscaler removed.
+  githubAPICredentialsFrom:
+    secretRef:
+      name: ferrix-runner-secret
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
