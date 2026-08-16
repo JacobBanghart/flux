@@ -73,6 +73,17 @@ spec:
 #
 # Note this is independent of `ephemeral`. Runners still recycle after
 # every job -- a fixed pool size does not mean long-lived runners.
+#
+# HARD CAP: 10 is a ceiling, not a starting point. Do NOT add a
+# HorizontalRunnerAutoscaler targeting ferrix-runner -- an HRA writes
+# spec.replicas itself and would scale the pool past what the node RAM
+# can actually absorb. The cap is enforced declaratively: replicas is
+# pinned here and Flux reconciles this file every 10m, so any manual
+# `kubectl scale` is reverted on the next pass.
+#
+# A namespace ResourceQuota would be a stronger backstop, but note that
+# a quota on requests.memory rejects any pod with an unset request --
+# see the dockerdContainerResources note below before adding one.
 apiVersion: actions.summerwind.dev/v1alpha1
 kind: RunnerDeployment
 metadata:
@@ -147,13 +158,45 @@ spec:
       securityContext:
         fsGroup: 1001
         fsGroupChangePolicy: OnRootMismatch
+      # Sized from 15d of Prometheus history rather than guesswork:
+      #
+      #   peak single runner container      4070Mi  (99.4% of the 4Gi limit)
+      #   peak dind container                240Mi
+      #   peak simultaneous total, all pods  5.9GiB
+      #   runners ever concurrently >2Gi         1
+      #   OOMKilled terminations, 15d            0
+      #
+      # Individual jobs really do consume the full 4Gi, so the limit must
+      # stay -- lowering it would OOMKill builds. But only one runner is
+      # heavy at a time, so the aggregate stays near 6GiB, nowhere near
+      # the 40GiB that 10 x 4Gi would suggest.
+      #
+      # The actual defect was requests: 128Mi -- 3% of real peak usage,
+      # so the scheduler was placing runners essentially blind. 1Gi
+      # reserves ~10Gi across the pool against a 5.9GiB observed peak
+      # (1.7x headroom) while still fitting every node, which keeps the
+      # 4/3/3 topology spread. 2Gi would starve worker-1 (only ~3.5Gi
+      # free there, homestead holds 10Gi) and collapse the spread.
       resources:
         limits:
           cpu: "4"
           memory: 4Gi
         requests:
           cpu: "100m"
-          memory: 128Mi
+          memory: 1Gi
+      # ARC injects the dind sidecar with no resources at all, so its
+      # ~240Mi peak was entirely unaccounted for in scheduling. Same
+      # blind-overcommit problem as the runner container above, just
+      # smaller. This also makes a namespace ResourceQuota possible
+      # later -- a quota on requests.memory rejects any pod with an
+      # unset request, so it would have taken CI down while dind had none.
+      dockerdContainerResources:
+        limits:
+          cpu: "1"
+          memory: 1Gi
+        requests:
+          cpu: "50m"
+          memory: 256Mi
       githubAPICredentialsFrom:
         secretRef:
           name: ferrix-runner-secret
