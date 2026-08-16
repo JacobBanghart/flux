@@ -44,6 +44,15 @@ metadata:
 spec:
   replicas: 1
   revisionHistoryLimit: 2
+  # Recreate, not RollingUpdate: the data volume is RWO on ceph-block, so a
+  # rolling update deadlocks -- the new pod cannot attach the volume while the
+  # old pod still holds it ("Multi-Attach error"), and the old pod is not
+  # terminated until the new one is Ready. Hit this on the 1.36.0 -> 1.37.1
+  # bump; it would affect any change to the pod template.
+  # Recreate means a brief outage during a deploy, which is correct for a
+  # single-replica app with a single-writer volume.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: vaultwarden
