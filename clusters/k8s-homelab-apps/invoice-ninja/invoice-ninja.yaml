@@ -145,9 +145,36 @@ spec:
       type: Recreate
     ingress:
       hostname: invoice-ninja.jacobbanghart.com
+    # --- Image pinning ---------------------------------------------------
+    #
+    # Every image below was on `tag: latest`, which for a database is a
+    # standing data-loss risk rather than just an unreproducible deploy.
+    # MariaDB is currently 13.0.1. When bitnami/mariadb:latest rolls to the
+    # next major, the very next pod restart -- an eviction, a node reboot, a
+    # rollout -- starts a server that upgrades the data directory in place.
+    # That upgrade is ONE-WAY: there is no downgrade path back to 13, and
+    # recovery would mean restoring ivmariapvc from the Ceph backup.
+    #
+    # The digests below are the images that were actually running and
+    # verified healthy on 2026-08-16. Pinning them means a restart brings
+    # back the same server rather than whatever `latest` points at that day.
+    # Checked at the time of writing: latest still resolved to the same
+    # mariadb digest, so this pins the known-good state rather than freezing
+    # an already-drifted one.
+    #
+    # `digest` is not documented in the nginx or redis values.yaml, only in
+    # mariadb's -- but all four render through the shared
+    # `common.images.image` helper in charts/common, which switches the
+    # separator to "@" whenever .imageRoot.digest is set. So it works for all
+    # of them, and it OVERRIDES tag. The tags are left in place only as a
+    # human-readable record of what the digest corresponds to.
+    #
+    # Upgrading from here is now a deliberate act: bump the digest, and for
+    # MariaDB take a logical dump first (see below).
     http:
       image:
         tag: "latest"
+        digest: "sha256:8c9776722a637ac598e6441062967459c2f754a765a0d0e7c40a17002823429a"
       resources:
         requests:
           memory: "512Mi"
@@ -155,6 +182,18 @@ spec:
         limits:
           memory: "2Gi"
           cpu: "2000m"
+    # The main application container. The parent chart reads a TOP-LEVEL
+    # `resources` key for it -- `http.resources` above only sizes the nginx
+    # sidecar. With this unset the invoiceninja container ran BestEffort
+    # (first evicted under node memory pressure) despite the pod looking
+    # sized, because one unrequested container drops the whole pod's QoS.
+    # Sized against 623Mi observed.
+    resources:
+      requests:
+        memory: "768Mi"
+        cpu: "100m"
+      limits:
+        memory: "2Gi"
     persistence:
       public:
         existingClaim: ivpublicpvc
@@ -165,6 +204,7 @@ spec:
         existingSecret: invoice-ninja-mariadb-auth
       image:
         tag: "latest"
+        digest: "sha256:47bdb03b349e22c62443fa91d95b3f10366aa48ce9e4419990c99b7c23400fa9"
       primary:
         persistence:
           existingClaim: ivmariapvc
@@ -178,16 +218,39 @@ spec:
     redis:
       image:
         tag: "latest"
+        digest: "sha256:061a40d93f0deb5f390866b0800f96a58dea8adde319af872523f1038b4a3a2b"
+      # There is no top-level `resources` key in the bitnami redis chart --
+      # this block previously sat at redis.resources, which the chart simply
+      # does not read, so it was silently ignored and both containers ran
+      # BestEffort. Sentinel mode names the pod redis-node-*, and sizing
+      # lives under master/replica/sentinel instead.
+      #
+      # Observed usage is tiny (redis 9Mi, sentinel 5Mi); these requests
+      # exist to buy a QoS class above BestEffort, not to reserve capacity.
+      master:
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+      replica:
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
       sentinel:
         image:
           tag: "latest"
-      resources:
-        requests:
-          memory: "128Mi"
-          cpu: "100m"
-        limits:
-          memory: "512Mi"
-          cpu: "1000m"
+          digest: "sha256:227cd52aae97a987a5cee995027720dab7ba1f16c554340ad905b497dbe537d9"
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "25m"
+          limits:
+            memory: "128Mi"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
