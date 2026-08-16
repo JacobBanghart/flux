@@ -1,0 +1,107 @@
+---
+# Egress containment for the CI runner pods.
+#
+# WHY THIS EXISTS
+#
+# Both RunnerDeployments in runners.yaml set `dockerEnabled: true`, which
+# makes ARC inject a Docker-in-Docker sidecar running privileged. A
+# privileged container is root on the node, so a compromise here is not
+# scoped to a pod -- it reaches every secret mounted on that node, the
+# kubelet credentials, and the Ceph admin keyring.
+#
+# That matters more than usual because of what these runners execute:
+# ferrix-runner is a 10-replica warm pool serving
+# `ReclaimerGold/rdn-pve-manager`, a repository in an organization this
+# cluster's owner does not control. The threat model therefore includes a
+# malicious pull request and a compromised marketplace action, not just
+# operator error.
+#
+# Until 2026-08-16 the cluster had three NetworkPolicies, all in flux-system,
+# so nothing constrained these pods at all: Vault, the Ceph mons, every other
+# application namespace, and the whole management LAN were directly
+# reachable.
+#
+# WHAT THIS DOES AND DOES NOT DO
+#
+# This is egress containment, not a fix for the privilege itself. A container
+# escape still yields node root; what it no longer yields is a free path to
+# the rest of the estate. Removing the privilege requires replacing DinD with
+# a rootless builder, which would mean changing workflows in a repo we do not
+# own -- tracked separately. Pairing this with a dedicated tainted node (so
+# an escape lands somewhere holding no OSD and no other app's secrets) is the
+# other half and is also tracked separately.
+#
+# SHAPE OF THE RULES
+#
+# Deliberately "block the sensitive things, allow the internet" rather than a
+# tight allowlist of GitHub endpoints. A tight list is better security but it
+# breaks CI at an unpredictable future moment -- the next build that needs a
+# registry, a package mirror, or a GitHub endpoint nobody enumerated. Flow
+# data could not settle this: Hubble keeps a ~4095-flow ring buffer (~100s at
+# current rates) and the runners were idle when this was written, so there
+# was no representative sample of a real build to derive an allowlist from.
+#
+# Excluding the RFC1918 ranges gets the actual objective. Everything worth
+# protecting is inside them:
+#
+#   10.42.0.0/16   pod network        (Vault, Ceph mons, every app)
+#   10.96.0.0/12   service ClusterIPs (same, via Service)
+#   10.4.0.0/24    cluster nodes + MetalLB VIPs
+#   10.1.0.0/24    management LAN     (Proxmox, TrueNAS, UniFi, Pi-hole)
+#
+# all of which fall under 10.0.0.0/8. GitHub, ghcr.io, Docker Hub and the npm
+# registry are all public, so builds are unaffected.
+#
+# NOTE: the kube-apiserver is now unreachable from a runner. That is
+# intended. If a workflow ever needs to deploy into this cluster, give it a
+# scoped ServiceAccount and a narrow explicit rule rather than widening this.
+#
+# NOTE: the ferrix-tool-cache / ferrix-npm-cache RWX volumes are unaffected.
+# CephFS is mounted by the kernel on the node, not by the pod over the pod
+# network, so no egress rule is required to keep the caches working.
+#
+# Scoped by the `actions-runner` label, which ARC puts on runner pods (with
+# an empty value) and not on the actions-runner-controller manager pod -- the
+# manager legitimately needs the API and must not be caught by this.
+#
+# Egress only. A compromised pod's danger is what it can reach outward;
+# nothing in the cluster initiates connections *to* a runner, but leaving
+# ingress unpoliced avoids silently breaking any future scrape.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: runner-egress-containment
+  namespace: actions-runner-system
+spec:
+  podSelector:
+    matchLabels:
+      actions-runner: ""
+  policyTypes:
+    - Egress
+  egress:
+    # CoreDNS only. Without this the pods resolve nothing, because naming an
+    # egress rule at all switches the pod to default-deny for egress.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+    # The public internet, minus every private range. 169.254.0.0/16 is
+    # excluded as well: link-local covers cloud metadata endpoints, and there
+    # is no reason for a build to reach one.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
