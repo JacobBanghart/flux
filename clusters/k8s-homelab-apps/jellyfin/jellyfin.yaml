@@ -59,6 +59,14 @@ metadata:
   namespace: jellyfin
 spec:
   revisionHistoryLimit: 2
+  # Recreate, not RollingUpdate: this pod mounts three RWO volumes, so a
+  # rolling update deadlocks -- the new pod cannot attach them while the old
+  # pod still holds them ("Multi-Attach error"), and the old pod is not
+  # terminated until the new one is Ready. Nothing breaks that cycle on its
+  # own, and Flux cannot even apply a fix because its reconcile waits on the
+  # unhealthy Deployment. Hit for real on vaultwarden 2026-08-16.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: jellyfin
