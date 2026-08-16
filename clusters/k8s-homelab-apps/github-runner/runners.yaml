@@ -28,6 +28,14 @@ spec:
           cpu: "100m"
           memory: 128Mi
       ephemeral: true
+      # Same mid-job kill as ferrix-runner below -- see the long comment
+      # there. This one also scales down via the HRA, which is an extra
+      # source of pod deletions, so the short drain window bites here too
+      # (2 orphaned offline registrations on BackToSafety as of 2026-08-16).
+      terminationGracePeriodSeconds: 1800
+      env:
+        - name: RUNNER_GRACEFUL_STOP_TIMEOUT
+          value: "1800"
 ---
 apiVersion: actions.summerwind.dev/v1alpha1
 kind: HorizontalRunnerAutoscaler
@@ -62,6 +70,24 @@ spec:
         - self-hosted
         - linux
       dockerEnabled: true
+      # These runners are ephemeral (no `ephemeral:` field -> ARC defaults
+      # to true), so ARC recycles a pod after each job. Deletion fires the
+      # runner image's preStop hook, which is meant to drain in-flight work:
+      #   while [ -f /runner/.runner ]; do sleep 1; done
+      # but it's wrapped in `timeout ${RUNNER_GRACEFUL_STOP_TIMEOUT:-15}`.
+      # Unset, that's 15s -- far shorter than a job -- so the hook exits
+      # non-zero (FailedPreStopHook) and kubelet kills the pod mid-job. The
+      # job then hangs in_progress on GitHub with no runner to report back
+      # and eventually resolves as cancelled, and the runner never
+      # deregisters, leaving an orphaned "offline" registration behind
+      # (8 of them had accumulated by 2026-08-16).
+      #
+      # Both values are required: raising only the hook timeout still gets
+      # SIGKILLed at the default 30s grace period.
+      terminationGracePeriodSeconds: 1800
+      env:
+        - name: RUNNER_GRACEFUL_STOP_TIMEOUT
+          value: "1800"
       # CephFS-backed RWX volumes provision with root:root 0755 at the
       # mount root; the runner container runs as uid=1001(runner), so
       # without fsGroup it can't mkdir anything under a fresh volume --
