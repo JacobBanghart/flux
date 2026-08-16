@@ -88,6 +88,31 @@ spec:
       env:
         - name: RUNNER_GRACEFUL_STOP_TIMEOUT
           value: "1800"
+      # Without this every runner pod piles onto one node (all 4 sat on
+      # k8s-worker-0 on 2026-08-16). Two causes stack up:
+      #
+      #   1. ARC gives each runner pod its own Runner CR as ownerRef,
+      #      rather than one shared ReplicaSet. The scheduler's default
+      #      spreading keys off shared Service/ReplicaSet/StatefulSet
+      #      ownership, so it sees N unrelated pods and has no signal to
+      #      spread them at all.
+      #   2. With no spreading signal, NodeResourcesFit's LeastAllocated
+      #      scoring decides, and it always picks the emptiest node.
+      #      k8s-worker-0 sits at ~33% memory requests vs ~84% on
+      #      worker-1 and ~51% on worker-2, so it wins every time.
+      #
+      # ScheduleAnyway rather than DoNotSchedule on purpose: a runner
+      # that can't schedule means queued CI jobs, and a hard constraint
+      # is exactly what stalled the grafana rollout for 5 days when a
+      # node was unavailable. Soft is enough here because the topology
+      # spread plugin carries more scoring weight than resource fit.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              runner-deployment-name: ferrix-runner
       # CephFS-backed RWX volumes provision with root:root 0755 at the
       # mount root; the runner container runs as uid=1001(runner), so
       # without fsGroup it can't mkdir anything under a fresh volume --
