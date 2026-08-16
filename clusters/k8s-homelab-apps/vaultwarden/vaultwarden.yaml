@@ -54,7 +54,16 @@ spec:
     spec:
       containers:
         - name: vaultwarden
-          image: vaultwarden/server:1.36.0
+          # 1.37.x is REQUIRED for Bitwarden clients >= 2026.7.0 -- the
+          # browser extension auto-updates itself, so an older server here
+          # silently stops working with it (requests still return 200, the
+          # extension just cannot use the responses).
+          # 1.37.0 also fixed 8 security advisories (CVSS 4.3-6.3): SSRF,
+          # cross-organization access, and authorization bypasses.
+          # NOTE: Vaultwarden runs DB migrations on startup, so downgrading
+          # below 1.37 after this is not supported -- roll back from the S3
+          # backup instead, not by reverting this tag.
+          image: vaultwarden/server:1.37.1
           ports:
             - containerPort: 80
               name: http
