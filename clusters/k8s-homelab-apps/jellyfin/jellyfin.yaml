@@ -169,7 +169,11 @@ metadata:
 spec:
   secretName: jellyfin-tls
   duration: 2160h # 90d
-  renewBefore: 360h # 15d
+  # Staggered. Every cert in this cluster was issued together with an
+  # identical 90d duration and 15d renewBefore, so all 12 renewed on the
+  # same day -- a broken DNS-01 path would have surfaced as 12 simultaneous
+  # outages rather than one. Values step 15d..26d across the estate.
+  renewBefore: 480h # 20d
   privateKey:
     algorithm: ECDSA
     size: 256
