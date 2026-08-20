@@ -52,6 +52,61 @@ spec:
       repositoryNames:
         - JacobBanghart/BackToSafety
 ---
+# Runner for JacobBanghart/reactor-incremental-rebuild (private repo -- self-hosted
+# to avoid billed GitHub-hosted minutes). Same controller-level GitHub App auth as
+# shared-runner above (no githubAPICredentialsFrom) -- the App installation must
+# include the repo or these runners will fail to register.
+#
+# dockerEnabled: false on purpose -- the repo's CI (dotnet build/test + a headless
+# Godot GUT suite) never builds images, so the dind sidecar would be pure overhead.
+#
+# Resources sized for the heaviest job (gut): full solution build + Godot headless
+# import + GUT E2E suite. 4Gi limit mirrors what the same work consumes on the dev
+# machine; requests stay modest like the other pools here.
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: RunnerDeployment
+metadata:
+  name: reactor-runner
+  namespace: actions-runner-system
+spec:
+  replicas: 1
+  template:
+    spec:
+      repository: JacobBanghart/reactor-incremental-rebuild
+      labels:
+        - self-hosted
+        - linux
+      dockerEnabled: false
+      resources:
+        limits:
+          cpu: "4"
+          memory: 4Gi
+        requests:
+          cpu: "100m"
+          memory: 512Mi
+      ephemeral: true
+      # Same mid-job kill protection as the other pools -- see ferrix-runner's
+      # long comment below for why both values are required.
+      terminationGracePeriodSeconds: 1800
+      env:
+        - name: RUNNER_GRACEFUL_STOP_TIMEOUT
+          value: "1800"
+---
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: HorizontalRunnerAutoscaler
+metadata:
+  name: reactor-runner-autoscaler
+  namespace: actions-runner-system
+spec:
+  scaleTargetRef:
+    name: reactor-runner
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+    - type: TotalNumberOfQueuedAndInProgressWorkflowRuns
+      repositoryNames:
+        - JacobBanghart/reactor-incremental-rebuild
+---
 # Runner for ReclaimerGold/Ferrix -- capped at 4 cores / 4Gi per runner.
 #
 # Fixed warm pool rather than an HRA, on purpose.
