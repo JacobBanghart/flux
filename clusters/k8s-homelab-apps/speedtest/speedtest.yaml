@@ -70,18 +70,6 @@ spec:
             periodSeconds: 10
 ---
 apiVersion: traefik.io/v1alpha1
-kind: Middleware
-metadata:
-  name: limit
-  namespace: speedtest
-spec:
-  buffering:
-    maxRequestBodyBytes: 35000000
-    memRequestBodyBytes: 35000000
-    maxResponseBodyBytes: 35000000
-    memResponseBodyBytes: 35000000
----
-apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
   name: speedtest
@@ -99,8 +87,11 @@ spec:
   routes:
     - match: Host(`speedtest.jacobbanghart.com`)
       kind: Rule
-      middlewares:
-        - name: limit
+      # No buffering middleware: it fully buffers the request/response body
+      # before forwarding, which defeats OpenSpeedTest's real-time throughput
+      # measurement -- the client sees near-zero bytes for most of the test
+      # then a burst at the end, tanking the reported average without
+      # reflecting the real link.
       services:
         - name: speedtest
           port: 3000
