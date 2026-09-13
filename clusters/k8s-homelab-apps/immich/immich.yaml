@@ -20,7 +20,7 @@ spec:
   storageClassName: ceph-block
   resources:
     requests:
-      storage: 100Gi
+      storage: 250Gi
 ---
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
