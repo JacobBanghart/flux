@@ -50,7 +50,11 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: esphome
-          image: ghcr.io/esphome/esphome:latest
+          # Pinned 2026-09-14. :latest meant an unannounced ESPHome upgrade
+          # on every pod restart, which can require reflashing devices to match.
+          # This digest is 2026.8.2, the version that was running when pinned.
+          # Bump deliberately, ideally alongside the Home Assistant version.
+          image: ghcr.io/esphome/esphome@sha256:000c5ee5ee96d57208ee48f2d255f73713236f183959803e64cd0b00c39b277b
           ports:
             - containerPort: 6052
               name: http

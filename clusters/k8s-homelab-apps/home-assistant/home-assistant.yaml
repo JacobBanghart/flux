@@ -365,7 +365,12 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       initContainers:
         - name: install-hacs
-          image: alpine:latest
+          # Pinned 2026-09-14. A minor tag rather than a digest on purpose:
+          # this initContainer runs `apk add wget unzip`, so it should keep
+          # receiving Alpine patch updates within the minor. :latest would
+          # silently move across minors instead -- it resolved to 3.24.1 when
+          # this was pinned, so 3.24 is what was already running.
+          image: alpine:3.24
           command:
             - sh
             - -c
