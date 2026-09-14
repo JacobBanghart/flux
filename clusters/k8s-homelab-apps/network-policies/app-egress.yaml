@@ -1,0 +1,76 @@
+---
+# Egress containment for application namespaces.
+#
+# WHY THIS EXISTS ALONGSIDE app-ingress.yaml
+#
+# Ingress policies constrain what can reach an app. They say nothing about
+# where that app can reach *to*. Both ends are worth having, and they are
+# independent: an app with a tight ingress policy can still open outbound
+# connections to anything on the network.
+#
+# Applying the limit at the app end means the platform namespaces do not have
+# to be touched at all, which is the safer place to make this change.
+#
+# SHAPE: copied from github-runner/networkpolicy.yaml
+#
+# "Allow the internet, block the private ranges" rather than a tight allowlist
+# of destinations. That file explains the reasoning and it applies unchanged
+# here: a tight list is better security in principle but breaks the app at an
+# unpredictable future moment, and Hubble's ~4095-flow ring buffer (~100s at
+# current rates) is too small a sample to derive one from safely.
+#
+# Excluding RFC1918 and link-local gets the objective without enumerating
+# anything internal.
+#
+# ROLLOUT: one app at a time, starting with the one that can least afford to
+# be interesting. speedtest has a single pod, no database, no ExternalSecret
+# and no in-cluster dependency beyond DNS -- if this shape is wrong, it is
+# wrong somewhere that does not matter.
+#
+# DO NOT blanket-apply this to every app. Several have in-cluster dependencies
+# that a private-range block would sever:
+#   authentik   owns a CNPG Postgres cluster in its own namespace
+#   monitoring  owns grafana-postgres, and scrapes every namespace
+#   immich,     authenticate against authentik
+#   nextcloud
+# Same-namespace traffic is allowed below, which covers the CNPG cases, but
+# anything crossing a namespace boundary needs its own rule added deliberately.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: speedtest-egress-containment
+  namespace: speedtest
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    # CoreDNS only. Naming any egress rule switches the pod to default-deny
+    # for egress, so without this it resolves nothing.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+    # Its own namespace.
+    - to:
+        - podSelector: {}
+
+    # The public internet, minus the private ranges and link-local.
+    # speedtest exists to reach the internet, so this is the point of the app.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
