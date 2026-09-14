@@ -55,7 +55,9 @@ spec:
     spec:
       containers:
         - name: postgresql
-          image: postgres:16
+          # postgres:16 pinned by digest. Bumping the major version needs a
+          # dump/restore, so change this deliberately, not by retagging.
+          image: postgres@sha256:e17e86066e5ef83e0952a9347f5c792b7ece00972e2aa787a6986f471b3dd3d5
           ports:
             - containerPort: 5432
               name: postgresql
