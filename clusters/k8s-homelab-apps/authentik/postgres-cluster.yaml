@@ -61,6 +61,15 @@ spec:
     storageClass: ceph-block
     size: 20Gi
 
+  # Cap WAL a replication slot can pin. Twice now (2026-09-20, -09-25)
+  # a replica fell off onto a diverged timeline and its inactive HA slot
+  # held WAL until the volume filled (5Gi -> crash; 20Gi -> 86% alert).
+  # With a cap the slot is invalidated instead and the stale replica
+  # must be re-cloned (`kubectl cnpg destroy authentik-postgres <n>`).
+  postgresql:
+    parameters:
+      max_slot_wal_keep_size: "6GB"
+
   resources:
     requests:
       cpu: "50m"
