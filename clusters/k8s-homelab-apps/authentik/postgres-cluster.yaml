@@ -66,9 +66,15 @@ spec:
   # held WAL until the volume filled (5Gi -> crash; 20Gi -> 86% alert).
   # With a cap the slot is invalidated instead and the stale replica
   # must be re-cloned (`kubectl cnpg destroy authentik-postgres <n>`).
+  # archive_timeout: CNPG's 5min default forces a new 16MB segment every
+  # 5 minutes (~4.6GB/day vs ~260MB/day actually written) for a WAL
+  # archive that doesn't exist (no spec.backup). 1h means a stalled slot
+  # takes ~9 days, not ~1, to reach the cap above. Lower it again if
+  # Barman/PITR archiving is ever added.
   postgresql:
     parameters:
       max_slot_wal_keep_size: "6GB"
+      archive_timeout: "1h"
 
   resources:
     requests:
