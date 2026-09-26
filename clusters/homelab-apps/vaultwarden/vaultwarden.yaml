@@ -1,0 +1,182 @@
+# Migrated from dev cluster (Wave 2, see k8s-homelab's docs/decisions.md).
+# Data copied from TrueNAS NFS into this local-path PVC via a one-off
+# migration Job (already run, not part of this GitOps tree). Excluded
+# from external-dns and dev's copy left fully live -- public app cutover
+# is a single router-level event, not per-app.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vaultwarden
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vaultwarden-data-pvc
+  namespace: vaultwarden
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vaultwarden
+  namespace: vaultwarden
+  labels:
+    app: vaultwarden
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http
+  selector:
+    app: vaultwarden
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vaultwarden
+  namespace: vaultwarden
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  # Recreate, not RollingUpdate: the data volume is RWO on local-path, so a
+  # rolling update deadlocks -- the new pod cannot attach the volume while the
+  # old pod still holds it ("Multi-Attach error"), and the old pod is not
+  # terminated until the new one is Ready. Hit this on the 1.36.0 -> 1.37.1
+  # bump; it would affect any change to the pod template.
+  # Recreate means a brief outage during a deploy, which is correct for a
+  # single-replica app with a single-writer volume.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: vaultwarden
+  template:
+    metadata:
+      labels:
+        app: vaultwarden
+    spec:
+      containers:
+        - name: vaultwarden
+          # 1.37.x is REQUIRED for Bitwarden clients >= 2026.7.0 -- the
+          # browser extension auto-updates itself, so an older server here
+          # silently stops working with it (requests still return 200, the
+          # extension just cannot use the responses).
+          # 1.37.0 also fixed 8 security advisories (CVSS 4.3-6.3): SSRF,
+          # cross-organization access, and authorization bypasses.
+          # NOTE: Vaultwarden runs DB migrations on startup, so downgrading
+          # below 1.37 after this is not supported -- roll back from the S3
+          # backup instead, not by reverting this tag.
+          image: vaultwarden/server:1.37.1
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            - name: DOMAIN
+              value: "https://passwords.jacobbanghart.com"
+            - name: SIGNUPS_ALLOWED
+              value: "false"
+            - name: WEBSOCKET_ENABLED
+              value: "true"
+            - name: SHOW_PASSWORD_HINT
+              value: "false"
+            - name: ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: vaultwarden-admin-secret
+                  key: ADMIN_TOKEN
+          volumeMounts:
+            - name: vaultwarden-data
+              mountPath: /data
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /alive
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /alive
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: vaultwarden-data
+          persistentVolumeClaim:
+            claimName: vaultwarden-data-pvc
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: vaultwarden-admin-secret
+  namespace: vaultwarden
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: vaultwarden-admin-secret
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: vaultwarden/vaultwarden-admin-secret
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: vaultwarden
+  namespace: vaultwarden
+  annotations:
+    # An IngressRoute carries no LoadBalancer status, so the traefik source has
+    # no address to derive a target from -- and external-dns drops a hostname
+    # with zero targets before --default-targets is ever consulted, which only
+    # rewrites endpoints that already exist. Without this the app gets no
+    # record at all, silently.
+    external-dns.alpha.kubernetes.io/target: "68.170.78.3"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`passwords.jacobbanghart.com`)
+      kind: Rule
+      services:
+        - name: vaultwarden
+          port: 80
+  tls:
+    secretName: vaultwarden-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: vaultwarden-tls
+  namespace: vaultwarden
+spec:
+  secretName: vaultwarden-tls
+  duration: 2160h # 90d
+  # Staggered. Every cert in this cluster was issued together with an
+  # identical 90d duration and 15d renewBefore, so all 12 renewed on the
+  # same day -- a broken DNS-01 path would have surfaced as 12 simultaneous
+  # outages rather than one. Values step 15d..26d across the estate.
+  renewBefore: 384h # 16d
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - passwords.jacobbanghart.com
+  issuerRef:
+    name: letsencrypt-cloudflare
+    kind: ClusterIssuer
+    group: cert-manager.io

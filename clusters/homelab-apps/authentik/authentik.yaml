@@ -1,0 +1,225 @@
+# New OAuth/OIDC provider for the homelab (2026-07-19). Public hostname
+# since the goal is eventually fronting other public apps (Nextcloud,
+# Immich, etc.) with SSO, not just internal tools.
+#
+# No Redis/Valkey needed -- recent authentik versions dropped that
+# dependency entirely (Postgres LISTEN/NOTIFY covers what Redis used to
+# do). Postgres was originally the chart's bundled Bitnami subchart, not
+# a hand-rolled Deployment like Immich's, since authentik doesn't need a
+# custom image -- as of 2026-07-22 that subchart is disabled
+# (postgresql.enabled: false below) and replaced with a 3-instance CNPG
+# cluster (postgres-cluster.yaml, this directory) for node-drain HA. See
+# that file's header comment for why, and the authentik.postgresql.host
+# comment further down for the migration details.
+#
+# authentik-secret (via Vault/ESO) is shared by both authentik.existingSecret
+# and postgresql.auth.existingSecret (secretKeys.userPasswordKey points at
+# the same AUTHENTIK_POSTGRESQL__PASSWORD key) -- one secret, one source of
+# truth for the DB password instead of keeping two in sync by hand.
+#
+# Setting authentik.existingSecret.secretName makes the chart skip its own
+# secret.yaml template entirely -- which means it *also* skips generating
+# env vars for authentik.postgresql.{host,name,user,port} below (that only
+# happens via the same template, from the whole authentik: values block).
+# Those four aren't secret, but they still have to live in the same Vault
+# path/K8s Secret as AUTHENTIK_SECRET_KEY and AUTHENTIK_POSTGRESQL__PASSWORD,
+# or the server falls back to connecting at localhost:5432 and never comes
+# up. The authentik.postgresql.* values below are effectively documentation
+# at this point, not live config -- the real values must be present as
+# AUTHENTIK_POSTGRESQL__{HOST,NAME,USER,PORT} keys in the Vault secret
+# itself. Full key list needed at authentik/authentik-secret: SECRET_KEY,
+# POSTGRESQL__PASSWORD (both random, don't change SECRET_KEY after
+# install), POSTGRESQL__HOST ("authentik-postgresql"), POSTGRESQL__NAME
+# ("authentik"), POSTGRESQL__USER ("authentik"), POSTGRESQL__PORT ("5432").
+#
+# OAuth/OIDC clients registered against this Authentik instance: first
+# (and currently only) one is Vault, wired up via Vault's built-in oidc
+# auth method on the k8s-homelab cluster. That config -- and the
+# Authentik-side OAuth2 Provider/Application, which only exists in
+# Authentik's own DB since it was created via the web UI, not as code
+# here -- is documented in the k8s-homelab repo, not this one:
+# k8s-homelab/docs/runbook.md ("OIDC auth method (Authentik SSO)" under
+# the Vault section) and k8s-homelab/docs/decisions.md (the bugs hit
+# setting it up).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: authentik
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: authentik-secret
+  namespace: authentik
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: authentik-secret
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: authentik/authentik-secret
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: authentik
+  namespace: authentik
+spec:
+  interval: 1h
+  url: https://charts.goauthentik.io
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: authentik
+  namespace: authentik
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: authentik
+      version: "2026.5.5"
+      sourceRef:
+        kind: HelmRepository
+        name: authentik
+        namespace: authentik
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    authentik:
+      existingSecret:
+        secretName: authentik-secret
+      # Documentation only, same caveat as the big comment at the top of
+      # this file -- the real value Authentik connects to is whatever's
+      # in the authentik-secret K8s Secret's AUTHENTIK_POSTGRESQL__HOST
+      # key (synced from Vault). As of 2026-07-22 that's
+      # "authentik-postgres-rw", the CNPG cluster in postgres-cluster.yaml
+      # in this same directory -- not this bundled Bitnami subchart
+      # below, which is disabled now that data's been migrated over
+      # (pg_dump/pg_restore, row counts verified, then a live OIDC login
+      # round-trip confirmed against the new DB before cutting Vault's
+      # HOST value over). Bundled subchart's PVC (data-authentik-postgresql-0)
+      # is deliberately left in place, not deleted, as a rollback
+      # safety net -- StatefulSet deletion doesn't cascade to
+      # volumeClaimTemplate-created PVCs by default.
+      postgresql:
+        host: "authentik-postgres-rw"
+        name: authentik
+        user: authentik
+        port: 5432
+
+    postgresql:
+      enabled: false
+      auth:
+        username: authentik
+        database: authentik
+        existingSecret: authentik-secret
+        secretKeys:
+          userPasswordKey: AUTHENTIK_POSTGRESQL__PASSWORD
+      primary:
+        persistence:
+          enabled: true
+          storageClass: local-path
+          size: 5Gi
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+
+    server:
+      resources:
+        requests:
+          memory: "256Mi"
+          cpu: "200m"
+        limits:
+          memory: "1Gi"
+          cpu: "1000m"
+      ingress:
+        enabled: false
+
+    worker:
+      resources:
+        requests:
+          memory: "256Mi"
+          cpu: "200m"
+        limits:
+          memory: "1Gi"
+          cpu: "1000m"
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: authentik
+  namespace: authentik
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`auth.jacobbanghart.com`)
+      kind: Rule
+      services:
+        - name: authentik-server
+          port: 80
+  tls:
+    secretName: authentik-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: authentik-tls
+  namespace: authentik
+spec:
+  secretName: authentik-tls
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - auth.jacobbanghart.com
+  issuerRef:
+    name: letsencrypt-cloudflare
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+# external-dns's --source=traefik-proxy cannot generate endpoints from
+# hand-written IngressRoute CRDs on this cluster (confirmed via debug
+# logs: "No endpoints could be generated from Host <ns>/<name>" for
+# every IngressRoute checked, including already-working apps like
+# invoice-ninja -- those only get real DNS because their Helm chart
+# also creates its own plain Ingress, which the "ingress" source DOES
+# handle; everything else public still resolves only because its
+# Cloudflare record predates this cluster's external-dns entirely,
+# carried over unmanaged from dev). This Ingress exists purely so
+# external-dns has something to key off of -- Traefik still routes via
+# the IngressRoute above and cert-manager's Certificate above still
+# issues the cert; this adds no new traffic path, just a DNS source.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: authentik-dns
+  namespace: authentik
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: auth.jacobbanghart.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: authentik-server
+                port:
+                  number: 80

@@ -1,0 +1,430 @@
+---
+# Ingress containment for the application namespaces.
+#
+# WHY INGRESS AND NOT EGRESS
+#
+# The goal is limiting what a compromised pod can reach. That can be
+# expressed from either end, and the ingress end is far safer to roll out:
+# an ingress rule on namespace B is what stops a compromised pod in
+# namespace A connecting to B's services, and it cannot break B's own
+# outbound calls to the internet, to DNS, or to its database. An equivalent
+# egress policy would have to enumerate every destination each app legitimately
+# uses, and getting that wrong takes an app down.
+#
+# The runners are the exception and are handled with an egress policy in
+# github-runner/networkpolicy.yaml, because there the threat is specifically
+# outbound reach from a privileged container, and the destination set is
+# known (the public internet only).
+#
+# WHAT THIS BUYS
+#
+# Before this, the cluster had three NetworkPolicies, all in flux-system, on a
+# flat pod network shared by 27 namespaces. Any compromised pod could open a
+# connection to Vault, the Ceph mons, every database, and every other app.
+# After this, an app namespace accepts connections only from Traefik, from the
+# monitoring stack, and from itself.
+#
+# Each policy below is a single NetworkPolicy per namespace. A NetworkPolicy
+# that selects all pods and lists ingress rules is already default-deny for
+# everything not listed -- a separate deny-all policy would be redundant.
+#
+# NOT COVERED, deliberately:
+#
+#   home-assistant  Its pods run hostNetwork, so they are the node from
+#                   Cilium's point of view and pod-level ingress policy does
+#                   not govern them. It also publishes Mosquitto on the
+#                   MetalLB VIP 10.4.0.201, which ESPHome devices on other
+#                   VLANs connect to directly rather than through Traefik.
+#                   Policing it needs host-level rules, not this.
+#
+#   rook-ceph,      Storage, CNI, load balancing and GitOps. A mistake here
+#   kube-system,    takes out the cluster rather than one app, and several
+#   metallb-system, of them legitimately talk to everything. Worth doing, but
+#   flux-system     not in the same change as the apps.
+#
+# Node kubelet health probes are unaffected: Cilium treats the local host as
+# a special identity and permits host-to-pod traffic regardless of policy, so
+# liveness and readiness probes keep working.
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-and-monitoring
+  namespace: excalidraw
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # Traefik is the only thing that should be able to open a connection
+        # into this namespace from outside it.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+        # Prometheus scraping. No app here exposes a ServiceMonitor today, but
+        # allowing it costs nothing and avoids a silent scrape failure the
+        # first time one is added.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+        # Same-namespace traffic: app to its own database, cache, sidecars.
+        - podSelector: {}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-and-monitoring
+  namespace: files
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # Traefik is the only thing that should be able to open a connection
+        # into this namespace from outside it.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+        # Prometheus scraping. No app here exposes a ServiceMonitor today, but
+        # allowing it costs nothing and avoids a silent scrape failure the
+        # first time one is added.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+        # Same-namespace traffic: app to its own database, cache, sidecars.
+        - podSelector: {}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-and-monitoring
+  namespace: immich
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # Traefik is the only thing that should be able to open a connection
+        # into this namespace from outside it.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+        # Prometheus scraping. No app here exposes a ServiceMonitor today, but
+        # allowing it costs nothing and avoids a silent scrape failure the
+        # first time one is added.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+        # Same-namespace traffic: app to its own database, cache, sidecars.
+        - podSelector: {}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-and-monitoring
+  namespace: invoice-ninja
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # Traefik is the only thing that should be able to open a connection
+        # into this namespace from outside it.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+        # Prometheus scraping. No app here exposes a ServiceMonitor today, but
+        # allowing it costs nothing and avoids a silent scrape failure the
+        # first time one is added.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+        # Same-namespace traffic: app to its own database, cache, sidecars.
+        - podSelector: {}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-and-monitoring
+  namespace: jellyfin
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # Traefik is the only thing that should be able to open a connection
+        # into this namespace from outside it.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+        # Prometheus scraping. No app here exposes a ServiceMonitor today, but
+        # allowing it costs nothing and avoids a silent scrape failure the
+        # first time one is added.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+        # Same-namespace traffic: app to its own database, cache, sidecars.
+        - podSelector: {}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-and-monitoring
+  namespace: label-designer
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # Traefik is the only thing that should be able to open a connection
+        # into this namespace from outside it.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+        # Prometheus scraping. No app here exposes a ServiceMonitor today, but
+        # allowing it costs nothing and avoids a silent scrape failure the
+        # first time one is added.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+        # Same-namespace traffic: app to its own database, cache, sidecars.
+        - podSelector: {}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-and-monitoring
+  namespace: mealie
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # Traefik is the only thing that should be able to open a connection
+        # into this namespace from outside it.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+        # Prometheus scraping. No app here exposes a ServiceMonitor today, but
+        # allowing it costs nothing and avoids a silent scrape failure the
+        # first time one is added.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+        # Same-namespace traffic: app to its own database, cache, sidecars.
+        - podSelector: {}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-and-monitoring
+  namespace: nextcloud
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # Traefik is the only thing that should be able to open a connection
+        # into this namespace from outside it.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+        # Prometheus scraping. No app here exposes a ServiceMonitor today, but
+        # allowing it costs nothing and avoids a silent scrape failure the
+        # first time one is added.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+        # Same-namespace traffic: app to its own database, cache, sidecars.
+        - podSelector: {}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-and-monitoring
+  namespace: portfolio
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # Traefik is the only thing that should be able to open a connection
+        # into this namespace from outside it.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+        # Prometheus scraping. No app here exposes a ServiceMonitor today, but
+        # allowing it costs nothing and avoids a silent scrape failure the
+        # first time one is added.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+        # Same-namespace traffic: app to its own database, cache, sidecars.
+        - podSelector: {}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-and-monitoring
+  namespace: speedtest
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # Traefik is the only thing that should be able to open a connection
+        # into this namespace from outside it.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+        # Prometheus scraping. No app here exposes a ServiceMonitor today, but
+        # allowing it costs nothing and avoids a silent scrape failure the
+        # first time one is added.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+        # Same-namespace traffic: app to its own database, cache, sidecars.
+        - podSelector: {}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-and-monitoring
+  namespace: vaultwarden
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # Traefik is the only thing that should be able to open a connection
+        # into this namespace from outside it.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+        # Prometheus scraping. No app here exposes a ServiceMonitor today, but
+        # allowing it costs nothing and avoids a silent scrape failure the
+        # first time one is added.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+        # Same-namespace traffic: app to its own database, cache, sidecars.
+        - podSelector: {}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-and-monitoring
+  namespace: headlamp
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # Traefik is the only thing that should be able to open a connection
+        # into this namespace from outside it.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+        # Prometheus scraping. No app here exposes a ServiceMonitor today, but
+        # allowing it costs nothing and avoids a silent scrape failure the
+        # first time one is added.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+        # Same-namespace traffic: app to its own database, cache, sidecars.
+        - podSelector: {}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-and-monitoring
+  namespace: authentik
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # Traefik is the only thing that should be able to open a connection
+        # into this namespace from outside it.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+        # Prometheus scraping. No app here exposes a ServiceMonitor today, but
+        # allowing it costs nothing and avoids a silent scrape failure the
+        # first time one is added.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+        # Same-namespace traffic: app to its own database, cache, sidecars.
+        - podSelector: {}
+        # The CloudNativePG operator manages authentik-postgres from
+        # cnpg-system: it connects to the instances for failover, backups and
+        # switchover. Without this the cluster keeps running but the operator
+        # loses the ability to act on it.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+
+---
+# homestead runs a public game server -- see the game-port rule below.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-and-monitoring
+  namespace: homestead
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # Traefik is the only thing that should be able to open a connection
+        # into this namespace from outside it.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+        # Prometheus scraping. No app here exposes a ServiceMonitor today, but
+        # allowing it costs nothing and avoids a silent scrape failure the
+        # first time one is added.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+        # Same-namespace traffic: app to its own database, cache, sidecars.
+        - podSelector: {}
+    # Minecraft is published on the MetalLB VIP 10.4.0.202 with a WAN
+    # port-forward (UnifiTerraform: WAN:25566). Players connect straight to
+    # the VIP, not through Traefik, so restricting this namespace to Traefik
+    # would silently drop every player. The game port is deliberately open to
+    # the world; everything else in the namespace is not.
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 25565

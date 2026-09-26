@@ -1,0 +1,305 @@
+# Migrated from dev cluster (Wave 1 of the dev->k8s-homelab migration,
+# see docs/decisions.md). No public hostname/ingress involved -- CI
+# runners only make outbound connections to GitHub, so none of the
+# port-forward/DNS cutover concerns from the other Wave 1 apps apply
+# here.
+#
+# Shared runner for BackToSafety repository
+# Docker enabled to support image builds
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: RunnerDeployment
+metadata:
+  name: shared-runner
+  namespace: actions-runner-system
+spec:
+  replicas: 1
+  template:
+    spec:
+      repository: JacobBanghart/BackToSafety
+      labels:
+        - self-hosted
+        - linux
+      dockerEnabled: true
+      resources:
+        limits:
+          cpu: "8"
+          memory: 8Gi
+        requests:
+          cpu: "100m"
+          memory: 128Mi
+      ephemeral: true
+      # Same mid-job kill as ferrix-runner below -- see the long comment
+      # there. This one also scales down via the HRA, which is an extra
+      # source of pod deletions, so the short drain window bites here too
+      # (2 orphaned offline registrations on BackToSafety as of 2026-08-16).
+      terminationGracePeriodSeconds: 1800
+      env:
+        - name: RUNNER_GRACEFUL_STOP_TIMEOUT
+          value: "1800"
+---
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: HorizontalRunnerAutoscaler
+metadata:
+  name: shared-runner-autoscaler
+  namespace: actions-runner-system
+spec:
+  scaleTargetRef:
+    name: shared-runner
+  minReplicas: 1
+  maxReplicas: 2
+  metrics:
+    - type: TotalNumberOfQueuedAndInProgressWorkflowRuns
+      repositoryNames:
+        - JacobBanghart/BackToSafety
+---
+# Runner for JacobBanghart/reactor-incremental-rebuild (private repo -- self-hosted
+# to avoid billed GitHub-hosted minutes). Same controller-level GitHub App auth as
+# shared-runner above (no githubAPICredentialsFrom) -- the App installation must
+# include the repo or these runners will fail to register.
+#
+# dockerEnabled: false on purpose -- the repo's CI (dotnet build/test + a headless
+# Godot GUT suite) never builds images, so the dind sidecar would be pure overhead.
+#
+# Resources sized for the heaviest job (gut): full solution build + Godot headless
+# import + GUT E2E suite. 4Gi limit mirrors what the same work consumes on the dev
+# machine; requests stay modest like the other pools here.
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: RunnerDeployment
+metadata:
+  name: reactor-runner
+  namespace: actions-runner-system
+spec:
+  replicas: 1
+  template:
+    spec:
+      repository: JacobBanghart/reactor-incremental-rebuild
+      labels:
+        - self-hosted
+        - linux
+      dockerEnabled: false
+      resources:
+        limits:
+          cpu: "4"
+          memory: 4Gi
+        requests:
+          cpu: "100m"
+          memory: 512Mi
+      ephemeral: true
+      # Same mid-job kill protection as the other pools -- see ferrix-runner's
+      # long comment below for why both values are required.
+      terminationGracePeriodSeconds: 1800
+      env:
+        - name: RUNNER_GRACEFUL_STOP_TIMEOUT
+          value: "1800"
+---
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: HorizontalRunnerAutoscaler
+metadata:
+  name: reactor-runner-autoscaler
+  namespace: actions-runner-system
+spec:
+  scaleTargetRef:
+    name: reactor-runner
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+    - type: TotalNumberOfQueuedAndInProgressWorkflowRuns
+      repositoryNames:
+        - JacobBanghart/reactor-incremental-rebuild
+---
+# Runner for ReclaimerGold/Ferrix -- capped at 4 cores / 4Gi per runner.
+#
+# Fixed warm pool rather than an HRA, on purpose.
+#
+# An idle runner pod costs ~200Mi of actual memory (runner ~110-170Mi +
+# dind ~30-40Mi) and ~4m CPU, and only reserves 128Mi. Ten of them is
+# ~2Gi actual against roughly 27Gi free across worker-0 and worker-2, so
+# keeping them warm is close to free on this cluster.
+#
+# Autoscaling can't win here on timing: the CI workflow finishes in
+# ~4m50s, while ARC's 1m sync period plus a doubling scale-up factor
+# needs ~3m to ramp 2 -> 12. The run is nearly over before the capacity
+# lands, so you pay the complexity and still queue. An HRA would earn
+# its keep if idle capacity were billed by the hour, which it isn't.
+#
+# Sized to the workflow: 11 jobs, of which "All checks passed" is a
+# near-instant gate and the GHCR push is a skipped matrix, so real
+# concurrency peaks around 8-9.
+#
+# Note this is independent of `ephemeral`. Runners still recycle after
+# every job -- a fixed pool size does not mean long-lived runners.
+#
+# HARD CAP: 10 is a ceiling, not a starting point. Do NOT add a
+# HorizontalRunnerAutoscaler targeting ferrix-runner -- an HRA writes
+# spec.replicas itself and would scale the pool past what the node RAM
+# can actually absorb. The cap is enforced declaratively: replicas is
+# pinned here and Flux reconciles this file every 10m, so any manual
+# `kubectl scale` is reverted on the next pass.
+#
+# A namespace ResourceQuota would be a stronger backstop, but note that
+# a quota on requests.memory rejects any pod with an unset request --
+# see the dockerdContainerResources note below before adding one.
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: RunnerDeployment
+metadata:
+  name: ferrix-runner
+  namespace: actions-runner-system
+spec:
+  replicas: 10
+  template:
+    spec:
+      repository: ReclaimerGold/rdn-pve-manager
+      labels:
+        - self-hosted
+        - linux
+      dockerEnabled: true
+      # These runners are ephemeral (no `ephemeral:` field -> ARC defaults
+      # to true), so ARC recycles a pod after each job. Deletion fires the
+      # runner image's preStop hook, which is meant to drain in-flight work:
+      #   while [ -f /runner/.runner ]; do sleep 1; done
+      # but it's wrapped in `timeout ${RUNNER_GRACEFUL_STOP_TIMEOUT:-15}`.
+      # Unset, that's 15s -- far shorter than a job -- so the hook exits
+      # non-zero (FailedPreStopHook) and kubelet kills the pod mid-job. The
+      # job then hangs in_progress on GitHub with no runner to report back
+      # and eventually resolves as cancelled, and the runner never
+      # deregisters, leaving an orphaned "offline" registration behind
+      # (8 of them had accumulated by 2026-08-16).
+      #
+      # Both values are required: raising only the hook timeout still gets
+      # SIGKILLed at the default 30s grace period.
+      terminationGracePeriodSeconds: 1800
+      env:
+        - name: RUNNER_GRACEFUL_STOP_TIMEOUT
+          value: "1800"
+      # Without this every runner pod piles onto one node (all 4 sat on
+      # k8s-worker-0 on 2026-08-16). Two causes stack up:
+      #
+      #   1. ARC gives each runner pod its own Runner CR as ownerRef,
+      #      rather than one shared ReplicaSet. The scheduler's default
+      #      spreading keys off shared Service/ReplicaSet/StatefulSet
+      #      ownership, so it sees N unrelated pods and has no signal to
+      #      spread them at all.
+      #   2. With no spreading signal, NodeResourcesFit's LeastAllocated
+      #      scoring decides, and it always picks the emptiest node.
+      #      k8s-worker-0 sits at ~33% memory requests vs ~84% on
+      #      worker-1 and ~51% on worker-2, so it wins every time.
+      #
+      # ScheduleAnyway rather than DoNotSchedule on purpose: a runner
+      # that can't schedule means queued CI jobs, and a hard constraint
+      # is exactly what stalled the grafana rollout for 5 days when a
+      # node was unavailable. Soft is enough here because the topology
+      # spread plugin carries more scoring weight than resource fit.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              runner-deployment-name: ferrix-runner
+      # CephFS-backed RWX volumes provision with root:root 0755 at the
+      # mount root; the runner container runs as uid=1001(runner), so
+      # without fsGroup it can't mkdir anything under a fresh volume --
+      # broke every job hitting actions/setup-node with EACCES on
+      # /opt/hostedtoolcache/node (2026-07-20).
+      #
+      # fsGroupChangePolicy defaults to "Always", which makes kubelet
+      # recursively chown the whole volume tree on every single pod
+      # mount. With 4 replicas sharing the same RWX volume, concurrent
+      # recursive walks raced each other and hit
+      # "lstat ... no such file or directory" FailedMount errors once
+      # the volume had real content in it. OnRootMismatch skips the walk
+      # once the root dir's group already matches, which it does after
+      # the first fix -- no more redundant/racy chowns on remount.
+      securityContext:
+        fsGroup: 1001
+        fsGroupChangePolicy: OnRootMismatch
+      # Sized from 15d of Prometheus history rather than guesswork:
+      #
+      #   peak single runner container      4070Mi  (99.4% of the 4Gi limit)
+      #   peak dind container                240Mi
+      #   peak simultaneous total, all pods  5.9GiB
+      #   runners ever concurrently >2Gi         1
+      #   OOMKilled terminations, 15d            0
+      #
+      # Individual jobs really do consume the full 4Gi, so the limit must
+      # stay -- lowering it would OOMKill builds. But only one runner is
+      # heavy at a time, so the aggregate stays near 6GiB, nowhere near
+      # the 40GiB that 10 x 4Gi would suggest.
+      #
+      # The actual defect was requests: 128Mi -- 3% of real peak usage,
+      # so the scheduler was placing runners essentially blind. 1Gi
+      # (1.7x headroom over the 5.9GiB peak) fixed that, but reserved
+      # ~12.5Gi for a pool that idles at ~1.5Gi.
+      #
+      # 2026-09-26: cut to 512Mi runner + 128Mi dind = 6.4Gi across the
+      # pool, which equals the observed 15d aggregate peak (6.4GiB incl.
+      # dind). Still honest to the scheduler, and it frees ~6Gi of
+      # requests so the worker VMs can shrink 24 -> 18Gi ahead of the
+      # single-node migration (k8s-homelab docs/single-node-migration.md).
+      resources:
+        limits:
+          cpu: "4"
+          memory: 4Gi
+        requests:
+          cpu: "100m"
+          memory: 512Mi
+      # ARC injects the dind sidecar with no resources at all, so its
+      # ~240Mi peak was entirely unaccounted for in scheduling. Same
+      # blind-overcommit problem as the runner container above, just
+      # smaller. This also makes a namespace ResourceQuota possible
+      # later -- a quota on requests.memory rejects any pod with an
+      # unset request, so it would have taken CI down while dind had none.
+      dockerdContainerResources:
+        limits:
+          cpu: "1"
+          memory: 1Gi
+        requests:
+          cpu: "50m"
+          memory: 128Mi
+      githubAPICredentialsFrom:
+        secretRef:
+          name: ferrix-runner-secret
+      # Dev's version of this used per-node hostPath caches (single-node
+      # cluster, always the same disk). k8s-homelab has 3 workers and an
+      # ephemeral runner pod can land on any of them, so hostPath would
+      # give inconsistent cache hits -- switched to a shared
+      # ceph-filesystem (RWX) PVC instead so the cache is consistent
+      # regardless of which worker schedules the pod.
+      volumeMounts:
+        - name: tool-cache
+          mountPath: /opt/hostedtoolcache
+        - name: npm-cache
+          mountPath: /cache/npm
+      volumes:
+        - name: tool-cache
+          persistentVolumeClaim:
+            claimName: ferrix-tool-cache
+        - name: npm-cache
+          persistentVolumeClaim:
+            claimName: ferrix-npm-cache
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ferrix-tool-cache
+  namespace: actions-runner-system
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ferrix-npm-cache
+  namespace: actions-runner-system
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi

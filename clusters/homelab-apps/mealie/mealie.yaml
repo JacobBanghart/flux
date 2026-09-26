@@ -1,0 +1,198 @@
+# Migrated from dev cluster (Wave 2, see k8s-homelab's docs/decisions.md).
+# Data copied from TrueNAS NFS into this local-path PVC via a one-off
+# migration Job (already run, not part of this GitOps tree). Excluded
+# from external-dns and dev's copy left fully live -- public app cutover
+# is a single router-level event, not per-app.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mealie
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mealie-data-pvc
+  namespace: mealie
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: mealie-oidc
+  namespace: mealie
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: mealie-oidc
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: mealie/oidc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mealie
+  namespace: mealie
+spec:
+  revisionHistoryLimit: 2
+  # RollingUpdate deadlocks on this RWO local-path PVC: a new pod scheduled
+  # on a different node than the old one can't attach the still-attached
+  # volume and never becomes Ready, so the old pod never scales down either
+  # -- hit this for real with immich (2026-07-19), fixing proactively here.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: mealie
+  template:
+    metadata:
+      labels:
+        app: mealie
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: mealie
+          image: ghcr.io/mealie-recipes/mealie:v3.20.1
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "2048Mi"
+              cpu: "1000m"
+          ports:
+            - containerPort: 9000
+          volumeMounts:
+            - mountPath: /app/data
+              name: mealie-data
+          env:
+            - name: BASE_URL
+              value: https://mealie.jacobbanghart.com/
+            - name: OIDC_AUTH_ENABLED
+              value: "true"
+            # false: mealie is published publicly, so an Authentik login
+            # must not mint a Mealie account on the fly. Password signup was
+            # already off (the API reports allowSignup: false); this closes
+            # the OIDC path too. Existing users keep logging in normally --
+            # onboard someone new by creating their Mealie user first.
+            - name: OIDC_SIGNUP_ENABLED
+              value: "false"
+            - name: OIDC_AUTO_REDIRECT
+              value: "false"
+            - name: OIDC_PROVIDER_NAME
+              value: Authentik
+            - name: OIDC_REMEMBER_ME
+              value: "true"
+            - name: OIDC_USER_CLAIM
+              value: email
+            - name: OIDC_SCOPES_OVERRIDE
+              value: "openid email profile"
+            - name: OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: mealie-oidc
+                  key: OIDC_CLIENT_ID
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: mealie-oidc
+                  key: OIDC_CLIENT_SECRET
+            - name: OIDC_CONFIGURATION_URL
+              valueFrom:
+                secretKeyRef:
+                  name: mealie-oidc
+                  key: OIDC_CONFIGURATION_URL
+          livenessProbe:
+            httpGet:
+              path: /api/app/about
+              port: 9000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/app/about
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: mealie-data
+          persistentVolumeClaim:
+            claimName: mealie-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mealie
+  namespace: mealie
+spec:
+  selector:
+    app: mealie
+  ports:
+    - port: 9000
+      targetPort: 9000
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: mealie
+  namespace: mealie
+  annotations:
+    # An IngressRoute carries no LoadBalancer status, so the traefik source has
+    # no address to derive a target from -- and external-dns drops a hostname
+    # with zero targets before --default-targets is ever consulted, which only
+    # rewrites endpoints that already exist. Without this the app gets no
+    # record at all, silently.
+    external-dns.alpha.kubernetes.io/target: "68.170.78.3"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`mealie.jacobbanghart.com`)
+      kind: Rule
+      services:
+        - name: mealie
+          port: 9000
+  tls:
+    secretName: mealie-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: mealie-tls
+  namespace: mealie
+spec:
+  secretName: mealie-tls
+  duration: 2160h # 90d
+  # Staggered. Every cert in this cluster was issued together with an
+  # identical 90d duration and 15d renewBefore, so all 12 renewed on the
+  # same day -- a broken DNS-01 path would have surfaced as 12 simultaneous
+  # outages rather than one. Values step 15d..26d across the estate.
+  renewBefore: 528h # 22d
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - mealie.jacobbanghart.com
+  issuerRef:
+    name: letsencrypt-cloudflare
+    kind: ClusterIssuer
+    group: cert-manager.io

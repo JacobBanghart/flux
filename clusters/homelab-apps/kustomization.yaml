@@ -1,7 +1,0 @@
-# Apps for the single-node `homelab` cluster (k8s-homelab
-# docs/single-node-migration.md). Starts empty; apps are copied in from
-# ../k8s-homelab-apps during Phase 3. Once apps land, delete this file so
-# Flux auto-generates the kustomization like the old tree does.
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources: []

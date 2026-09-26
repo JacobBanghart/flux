@@ -1,0 +1,125 @@
+# Custom Immich postgres image (vectorchord/pgvector extensions for ML
+# embedding similarity search) -- must match dev's image exactly, not
+# vanilla postgres, or the restored schema's vector column types won't
+# have their extension available. Data restored from a pg_dump of dev's
+# database (proper logical dump/restore, not a raw NFS file copy of
+# PGDATA). See k8s-homelab's docs/decisions.md.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgresql-pvc
+  namespace: immich
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql
+  namespace: immich
+  labels:
+    app: postgresql
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgresql
+  selector:
+    app: postgresql
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgresql
+  namespace: immich
+spec:
+  replicas: 1
+  # Recreate, not RollingUpdate: this pod mounts an RWO volume, so a rolling
+  # update deadlocks -- the new pod cannot attach the volume while the old pod
+  # still holds it ("Multi-Attach error"), and the old pod is not terminated
+  # until the new one is Ready. Nothing breaks that cycle on its own, and Flux
+  # cannot even apply a fix because its reconcile waits on the unhealthy
+  # Deployment. Hit for real on vaultwarden 2026-08-16.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: postgresql
+  template:
+    metadata:
+      labels:
+        app: postgresql
+    spec:
+      # fsGroup needed alongside runAsUser/Group -- fresh local-path
+      # volumes default to root:root ownership, and only fsGroup
+      # triggers kubelet to chown them on mount (dev's NFS-backed
+      # volume didn't have this problem since NFS ownership is
+      # whatever the export already had, not Kubernetes-managed).
+      securityContext:
+        runAsUser: 70
+        runAsGroup: 70
+        fsGroup: 70
+      containers:
+        - name: postgresql
+          image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0
+          securityContext:
+            runAsUser: 70
+            runAsGroup: 70
+          ports:
+            - containerPort: 5432
+              name: postgresql
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: immich-postgres-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: immich-postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: immich-postgres-secret
+                  key: POSTGRES_DB
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: postgresql-data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              memory: "1024Mi"
+              cpu: "500m"
+            limits:
+              memory: "4Gi"
+              cpu: "2000m"
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U $POSTGRES_USER -d $POSTGRES_DB
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U $POSTGRES_USER -d $POSTGRES_DB
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+      volumes:
+        - name: postgresql-data
+          persistentVolumeClaim:
+            claimName: postgresql-pvc

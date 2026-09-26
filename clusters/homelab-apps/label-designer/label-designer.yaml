@@ -1,0 +1,178 @@
+# Label Designer -- browser canvas editor for thermal printer labels.
+# Source: https://github.com/JacobBanghart/label-designer
+#
+# Entirely client-side: no backend, no database, no secrets, no persistence
+# beyond the visitor's own browser storage. That is why there is no PVC, no
+# ExternalSecret, and no ConfigMap here -- the pod serves static files and
+# nothing else.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: label-designer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: label-designer
+  namespace: label-designer
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: label-designer
+  template:
+    metadata:
+      labels:
+        app: label-designer
+    spec:
+      containers:
+        - name: label-designer
+          # Built and published by .github/workflows/publish.yml in the app repo.
+          # Pinned to a commit tag, not :latest -- a mutable tag never changes
+          # this manifest, so Flux would have nothing to reconcile and the
+          # cluster would silently keep running the old image. Bump this line to
+          # deploy.
+          image: ghcr.io/jacobbanghart/label-designer:sha-194eb3f57ccd7850a01c1289cf5438656cfae751
+          # Static nginx; modest requests are genuinely enough.
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          ports:
+            # nginx-unprivileged runs as uid 101 and listens on 8080.
+            - containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false # nginx writes its temp/pid files
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: label-designer
+  namespace: label-designer
+spec:
+  selector:
+    app: label-designer
+  ports:
+    - port: 80
+      targetPort: 8080
+      name: http
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: label-designer
+  namespace: label-designer
+  # NOT excluded from external-dns, unlike most apps here.
+  #
+  # The exclusion elsewhere exists to stop external-dns flipping an EXISTING
+  # live record away from the old dev Traefik before that cluster is out of the
+  # path. This hostname is new: no record exists and there is no old-cluster
+  # counterpart, so there is nothing to flip. Excluding it would just mean the
+  # app never gets a record at all.
+  #
+  # The A record is pinned to the WAN address on the Ingress below. Left to
+  # itself external-dns publishes the Traefik LoadBalancer VIP (10.4.0.200),
+  # which is fine for the LAN-only apps here but makes this one resolve to an
+  # RFC1918 address for everyone off the network -- see that annotation.
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`labels.jacobbanghart.com`)
+      kind: Rule
+      services:
+        - name: label-designer
+          port: 80
+  tls:
+    secretName: label-designer-tls
+---
+# Companion Ingress, purely so external-dns publishes a record.
+#
+# external-dns is configured with sources [ingress, service, traefik-proxy], but
+# Traefik IngressRoute CRDs carry no status address, so the traefik-proxy source
+# yields no target and external-dns ignores them entirely. Every hostname it
+# actually owns here comes from a plain Ingress -- auth.jacobbanghart.com's TXT
+# record reads `external-dns/resource=ingress/authentik/authentik-dns`.
+#
+# Traefik serves the traffic via the IngressRoute above (which owns the TLS
+# config); this object exists only to give external-dns something to publish,
+# mirroring the authentik-dns pattern.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: label-designer-dns
+  namespace: label-designer
+  annotations:
+    # Publish the WAN address, not the Traefik LoadBalancer VIP.
+    #
+    # external-dns defaults to the Ingress status IP, which on this cluster is
+    # a MetalLB VIP on VLAN 30 -- an RFC1918 address. Published to public DNS
+    # that resolves fine on the LAN and is unreachable from anywhere else, so
+    # the site looked deployed while being dead to the internet.
+    #
+    # The old k3s cluster avoided this by declaring the node's ExternalIP,
+    # which external-dns picked up; the MetalLB LoadBalancer here supersedes
+    # that, so the target is stated explicitly instead.
+    #
+    # WAN:443 is forwarded to 10.4.0.200 by unifi_port_forward.dev_https in
+    # UnifiTerraform/port_forwards.tf, so this address does reach Traefik.
+    # It is a residential IP: if the ISP ever changes it, this line and the
+    # apex record both need updating.
+    external-dns.alpha.kubernetes.io/target: "68.170.78.3"
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: labels.jacobbanghart.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: label-designer
+                port:
+                  number: 80
+            path: /
+            pathType: Prefix
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: label-designer-tls
+  namespace: label-designer
+spec:
+  secretName: label-designer-tls
+  duration: 2160h # 90d
+  # Staggered. Every cert in this cluster was issued together with an
+  # identical 90d duration and 15d renewBefore, so all 12 renewed on the
+  # same day -- a broken DNS-01 path would have surfaced as 12 simultaneous
+  # outages rather than one. Values step 15d..26d across the estate.
+  renewBefore: 576h # 24d
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - labels.jacobbanghart.com
+  issuerRef:
+    name: letsencrypt-cloudflare
+    kind: ClusterIssuer
+    group: cert-manager.io

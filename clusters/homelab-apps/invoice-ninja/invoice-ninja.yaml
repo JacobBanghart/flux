@@ -1,0 +1,306 @@
+# Migrated from dev cluster (Wave 4, see k8s-homelab's docs/decisions.md).
+# public/storage data already copied from TrueNAS NFS into local-path
+# PVCs. MariaDB data restored from a mysqldump (not raw file copy) --
+# dev's --routines dump failed outright (image.tag: "latest" drifted the
+# live MariaDB version far ahead of its on-disk system tables, which
+# were never migrated via mariadb-upgrade; --skip-routines/--skip-triggers
+# avoided the broken introspection query, safe since this Laravel app
+# doesn't use stored DB routines). Both secrets sourced from Vault via
+# ESO -- verified this app reads DB creds fresh from env vars each pod
+# start rather than caching them in a config file, so no drift risk like
+# Nextcloud's secret had.
+#
+# existingSecret: invoice-ninja-app-secret carries dev's original APP_KEY
+# (pulled live from dev's invoice-ninja-hc-invoiceninja secret after
+# resuming the paused VM). Without it, the chart auto-generates a fresh
+# random key on install, which can't decrypt data already encrypted
+# under dev's key in the migrated dump -- broke login with a Laravel
+# "MAC is invalid" DecryptException. IN_PASSWORD is deliberately omitted
+# from the Vault secret; it only seeds an initial admin password on a
+# brand-new install and this app already has real migrated users.
+#
+# updateStrategy: Recreate -- ivpublicpvc/ivstoragepvc are local-path
+# (RWO, single-attach). Default RollingUpdate tries to schedule the new
+# pod before the old one releases the volume, deadlocking on a
+# FailedAttachVolume multi-attach error. Chart's own values.yaml
+# documents this exact case.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: invoice-ninja
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ivpublicpvc
+  namespace: invoice-ninja
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ivstoragepvc
+  namespace: invoice-ninja
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: invoice-ninja-mail-secret
+  namespace: invoice-ninja
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: invoice-ninja-mail-secret
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: invoice-ninja/invoice-ninja-mail-secret
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: invoice-ninja-app-secret
+  namespace: invoice-ninja
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: invoice-ninja-app-secret
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: invoice-ninja/invoice-ninja-app-secret
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: invoice-ninja-mariadb-auth
+  namespace: invoice-ninja
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: invoice-ninja-mariadb-auth
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: invoice-ninja/invoice-ninja-mariadb-auth
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: invoice-ninja-hc
+  namespace: invoice-ninja
+spec:
+  interval: 1h
+  url: https://invoiceninja.github.io/dockerfiles
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: invoice-ninja-hc
+  namespace: invoice-ninja
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: invoiceninja
+      version: "0.10.2"
+      sourceRef:
+        kind: HelmRepository
+        name: invoice-ninja-hc
+        namespace: invoice-ninja
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    appURL: https://invoice-ninja.jacobbanghart.com
+    mailer: smtp
+    extraEnvVarsSecret: invoice-ninja-mail-secret
+    existingSecret: invoice-ninja-app-secret
+    updateStrategy:
+      type: Recreate
+    ingress:
+      hostname: invoice-ninja.jacobbanghart.com
+    # --- Image pinning ---------------------------------------------------
+    #
+    # Every image below was on `tag: latest`, which for a database is a
+    # standing data-loss risk rather than just an unreproducible deploy.
+    # MariaDB is currently 13.0.1. When bitnami/mariadb:latest rolls to the
+    # next major, the very next pod restart -- an eviction, a node reboot, a
+    # rollout -- starts a server that upgrades the data directory in place.
+    # That upgrade is ONE-WAY: there is no downgrade path back to 13, and
+    # recovery would mean restoring ivmariapvc from the Ceph backup.
+    #
+    # The digests below are the images that were actually running and
+    # verified healthy on 2026-08-16. Pinning them means a restart brings
+    # back the same server rather than whatever `latest` points at that day.
+    # Checked at the time of writing: latest still resolved to the same
+    # mariadb digest, so this pins the known-good state rather than freezing
+    # an already-drifted one.
+    #
+    # `digest` is not documented in the nginx or redis values.yaml, only in
+    # mariadb's -- but all four render through the shared
+    # `common.images.image` helper in charts/common, which switches the
+    # separator to "@" whenever .imageRoot.digest is set. So it works for all
+    # of them, and it OVERRIDES tag. The tags are left in place only as a
+    # human-readable record of what the digest corresponds to.
+    #
+    # Upgrading from here is now a deliberate act: bump the digest, and for
+    # MariaDB take a logical dump first (see below).
+    http:
+      image:
+        tag: "latest"
+        digest: "sha256:8c9776722a637ac598e6441062967459c2f754a765a0d0e7c40a17002823429a"
+      resources:
+        requests:
+          memory: "512Mi"
+          cpu: "500m"
+        limits:
+          memory: "2Gi"
+          cpu: "2000m"
+    # The main application container. The parent chart reads a TOP-LEVEL
+    # `resources` key for it -- `http.resources` above only sizes the nginx
+    # sidecar. With this unset the invoiceninja container ran BestEffort
+    # (first evicted under node memory pressure) despite the pod looking
+    # sized, because one unrequested container drops the whole pod's QoS.
+    # Sized against 623Mi observed.
+    resources:
+      requests:
+        memory: "768Mi"
+        cpu: "100m"
+      limits:
+        memory: "2Gi"
+    persistence:
+      public:
+        existingClaim: ivpublicpvc
+      storage:
+        existingClaim: ivstoragepvc
+    mariadb:
+      auth:
+        existingSecret: invoice-ninja-mariadb-auth
+      image:
+        tag: "latest"
+        digest: "sha256:47bdb03b349e22c62443fa91d95b3f10366aa48ce9e4419990c99b7c23400fa9"
+      primary:
+        persistence:
+          existingClaim: ivmariapvc
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+    redis:
+      image:
+        tag: "latest"
+        digest: "sha256:061a40d93f0deb5f390866b0800f96a58dea8adde319af872523f1038b4a3a2b"
+      # There is no top-level `resources` key in the bitnami redis chart --
+      # this block previously sat at redis.resources, which the chart simply
+      # does not read, so it was silently ignored and both containers ran
+      # BestEffort. Sentinel mode names the pod redis-node-*, and sizing
+      # lives under master/replica/sentinel instead.
+      #
+      # Observed usage is tiny (redis 9Mi, sentinel 5Mi); these requests
+      # exist to buy a QoS class above BestEffort, not to reserve capacity.
+      master:
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+      replica:
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+      sentinel:
+        image:
+          tag: "latest"
+          digest: "sha256:227cd52aae97a987a5cee995027720dab7ba1f16c554340ad905b497dbe537d9"
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "25m"
+          limits:
+            memory: "128Mi"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ivmariapvc
+  namespace: invoice-ninja
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: invoice-ninja
+  namespace: invoice-ninja
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`invoice-ninja.jacobbanghart.com`)
+      kind: Rule
+      services:
+        - name: invoiceninja-web
+          port: 8080
+  tls:
+    secretName: invoice-ninja-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: invoice-ninja-tls
+  namespace: invoice-ninja
+spec:
+  secretName: invoice-ninja-tls
+  duration: 2160h # 90d
+  # Staggered. Every cert in this cluster was issued together with an
+  # identical 90d duration and 15d renewBefore, so all 12 renewed on the
+  # same day -- a broken DNS-01 path would have surfaced as 12 simultaneous
+  # outages rather than one. Values step 15d..26d across the estate.
+  renewBefore: 552h # 23d
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - invoice-ninja.jacobbanghart.com
+  issuerRef:
+    name: letsencrypt-cloudflare
+    kind: ClusterIssuer
+    group: cert-manager.io

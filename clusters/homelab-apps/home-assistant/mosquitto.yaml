@@ -1,0 +1,85 @@
+# No real data to migrate -- persistence is emptyDir on dev too (a
+# cache, not a source of truth; MQTT retained messages rebuild from
+# device state on reconnect).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mosquitto-config
+  namespace: home-assistant
+data:
+  mosquitto.conf: |
+    listener 1883
+    allow_anonymous true
+    persistence true
+    persistence_location /mosquitto/data/
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mosquitto
+  namespace: home-assistant
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: mosquitto
+  template:
+    metadata:
+      labels:
+        app: mosquitto
+    spec:
+      containers:
+        - name: mosquitto
+          # eclipse-mosquitto:2 pinned by digest.
+          image: eclipse-mosquitto@sha256:6f8d8a947c506f8a2290ec65cd4bd2bc7cb4d43fb5f6271f861cb013e2ef9797
+          ports:
+            - containerPort: 1883
+              name: mqtt
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "400m"
+          volumeMounts:
+            - name: config
+              mountPath: /mosquitto/config/mosquitto.conf
+              subPath: mosquitto.conf
+            - name: data
+              mountPath: /mosquitto/data
+      volumes:
+        - name: config
+          configMap:
+            name: mosquitto-config
+        - name: data
+          emptyDir: {}
+---
+# Fixed MetalLB LoadBalancer IP (2026-07-19), not NodePort. Devices were
+# hardcoded on dev to its single-node NodePort address (10.1.0.34:31883)
+# -- on a 6-node cluster, NodePort works from any node's own IP, but that
+# meant devices would need to be pointed at a specific k8s-worker's IP,
+# which isn't stable (pod/node changes, and there's no single "the
+# cluster's IP" the way dev's single node was). A dedicated LB IP out of
+# k8s-lab's MetalLB pool (10.4.0.200-220, Traefik already has .200) gives
+# devices one fixed address independent of which node mosquitto lands on.
+# k8s-lab -> iot firewall direction already covered by the existing
+# Internal -> k8s-lab zone policy (iot has no dedicated zone yet, see
+# k8s-homelab/unifi/firewall.tf) -- this only changes how the broker is
+# addressed, not the firewall path.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mosquitto
+  namespace: home-assistant
+  annotations:
+    metallb.io/loadBalancerIPs: "10.4.0.201"
+spec:
+  selector:
+    app: mosquitto
+  ports:
+    - port: 1883
+      targetPort: 1883
+      name: mqtt
+  type: LoadBalancer
