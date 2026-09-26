@@ -228,17 +228,21 @@ spec:
       #
       # The actual defect was requests: 128Mi -- 3% of real peak usage,
       # so the scheduler was placing runners essentially blind. 1Gi
-      # reserves ~10Gi across the pool against a 5.9GiB observed peak
-      # (1.7x headroom) while still fitting every node, which keeps the
-      # 4/3/3 topology spread. 2Gi would starve worker-1 (only ~3.5Gi
-      # free there, homestead holds 10Gi) and collapse the spread.
+      # (1.7x headroom over the 5.9GiB peak) fixed that, but reserved
+      # ~12.5Gi for a pool that idles at ~1.5Gi.
+      #
+      # 2026-09-26: cut to 512Mi runner + 128Mi dind = 6.4Gi across the
+      # pool, which equals the observed 15d aggregate peak (6.4GiB incl.
+      # dind). Still honest to the scheduler, and it frees ~6Gi of
+      # requests so the worker VMs can shrink 24 -> 18Gi ahead of the
+      # single-node migration (k8s-homelab docs/single-node-migration.md).
       resources:
         limits:
           cpu: "4"
           memory: 4Gi
         requests:
           cpu: "100m"
-          memory: 1Gi
+          memory: 512Mi
       # ARC injects the dind sidecar with no resources at all, so its
       # ~240Mi peak was entirely unaccounted for in scheduling. Same
       # blind-overcommit problem as the runner container above, just
@@ -251,7 +255,7 @@ spec:
           memory: 1Gi
         requests:
           cpu: "50m"
-          memory: 256Mi
+          memory: 128Mi
       githubAPICredentialsFrom:
         secretRef:
           name: ferrix-runner-secret
