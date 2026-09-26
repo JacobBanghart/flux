@@ -78,9 +78,6 @@ metadata:
   name: authentik
   namespace: authentik
 spec:
-  # CUTOVER: held until authentik-postgres has the restored dump, so the
-  # app can't run migrations against an empty DB first. Remove after restore.
-  suspend: true
   interval: 10m
   chart:
     spec:
