@@ -40,7 +40,7 @@ spec:
       storage: 10Gi
 ---
 # Private GHCR image. The token lives in Vault at lsat-gradebook/ghcr
-# (keys: username, token -- a GitHub PAT with read:packages only).
+# (keys: username, token -- a GitHub token with the read:packages scope).
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
@@ -57,7 +57,8 @@ spec:
     template:
       type: kubernetes.io/dockerconfigjson
       data:
-        .dockerconfigjson: '{"auths":{"ghcr.io":{"username":"{{ .username }}","password":"{{ .token }}","auth":"{{ printf "%s:%s" .username .token | b64enc }}"}}}'
+        # trim: a token piped from `gh auth token` into `vault kv put token=-` keeps its trailing newline.
+        .dockerconfigjson: '{"auths":{"ghcr.io":{"username":"{{ .username | trim }}","password":"{{ .token | trim }}","auth":"{{ printf "%s:%s" (.username | trim) (.token | trim) | b64enc }}"}}}'
   dataFrom:
     - extract:
         key: lsat-gradebook/ghcr
