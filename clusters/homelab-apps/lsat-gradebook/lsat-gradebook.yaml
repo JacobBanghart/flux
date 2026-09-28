@@ -1,17 +1,15 @@
 # LSAT 170 Gradebook -- course gradebook for LSAT study (Next.js + SQLite).
 # Source: https://github.com/JacobBanghart/lsat-gradebook (private)
 #
-# LAN-ONLY, AND THAT IS LOAD-BEARING: the app has no login. Three layers keep
-# it off the internet:
-#   1. DNS: lsat.jacobbanghart.com exists only in Pi-hole
-#      (k8s-homelab/unifi/pihole_dns.tf). The IngressRoute opts out of
-#      external-dns, so no Cloudflare record is ever published.
-#   2. Reachability: WAN:443 is port-forwarded to Traefik, which routes by SNI,
-#      so an unpublished name still answers to anyone who guesses it (see the
-#      headlamp-public note). The lan-only IPAllowList middleware below is what
-#      actually closes that.
-#   3. NetworkPolicy: only Traefik and monitoring can reach the pod
-#      (network-policies/app-ingress.yaml).
+# PUBLIC WITH NO LOGIN, by explicit decision (2026-09-27): the student has to
+# reach it from outside the home network. Accepted exposure: anyone who finds
+# lsat.jacobbanghart.com can view and change grades, and see evidence photos.
+# The hostname is already in certificate transparency logs, so it is not
+# secret. Declined compensating controls: app passcodes, Authentik
+# forward-auth, the earlier lan-only IPAllowList. If this ever needs closing,
+# INSTRUCTOR_PASSCODE (app env) gates the /i pages with no code change.
+# The app sends noindex so search engines skip it. Only Traefik and monitoring
+# can reach the pod (network-policies/app-ingress.yaml).
 #
 # Single replica + Recreate is required, not a preference: SQLite plus an
 # in-process scheduler (deadline close, forfeits) must never run twice.
@@ -95,7 +93,7 @@ spec:
           # Built by .github/workflows/publish.yml in the app repo. Pinned to a
           # commit tag so a new image is a manifest change Flux can see. Bump
           # this line to deploy.
-          image: ghcr.io/jacobbanghart/lsat-gradebook:sha-59508b0844a2ce343d1598eb55c27649c3769adc
+          image: ghcr.io/jacobbanghart/lsat-gradebook:sha-38e656012e7a781578eb9b09d86d355f2ab25650
           ports:
             - containerPort: 3000
               name: http
@@ -161,34 +159,22 @@ spec:
       name: http
 ---
 apiVersion: traefik.io/v1alpha1
-kind: Middleware
-metadata:
-  name: lan-only
-  namespace: lsat-gradebook
-spec:
-  ipAllowList:
-    sourceRange:
-      - 10.0.0.0/8
-      - 172.16.0.0/12
-      - 192.168.0.0/16
----
-apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
   name: lsat-gradebook
   namespace: lsat-gradebook
   annotations:
-    # Opt out of external-dns entirely (any value other than "dns-controller"
-    # makes every source skip the object). This name must never be public.
-    external-dns.alpha.kubernetes.io/controller: "none"
+    # An IngressRoute carries no LoadBalancer status, so the traefik source has
+    # no address to derive a target from -- and external-dns drops a hostname
+    # with zero targets before --default-targets is ever consulted. Without
+    # this the app gets no record at all, silently.
+    external-dns.alpha.kubernetes.io/target: "68.170.78.3"
 spec:
   entryPoints:
     - websecure
   routes:
     - match: Host(`lsat.jacobbanghart.com`)
       kind: Rule
-      middlewares:
-        - name: lan-only
       services:
         - name: lsat-gradebook
           port: 80
