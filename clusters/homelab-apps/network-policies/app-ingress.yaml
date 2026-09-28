@@ -207,6 +207,32 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: allow-traefik-and-monitoring
+  namespace: lsat-gradebook
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # Traefik is the only thing that should be able to open a connection
+        # into this namespace from outside it.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+        # Prometheus scraping. No app here exposes a ServiceMonitor today, but
+        # allowing it costs nothing and avoids a silent scrape failure the
+        # first time one is added.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+        # Same-namespace traffic: app to its own database, cache, sidecars.
+        - podSelector: {}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-and-monitoring
   namespace: mealie
 spec:
   podSelector: {}

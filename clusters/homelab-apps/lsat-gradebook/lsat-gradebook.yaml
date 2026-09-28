@@ -1,0 +1,209 @@
+# LSAT 170 Gradebook -- course gradebook for LSAT study (FastAPI + SQLite).
+# Source: https://github.com/JacobBanghart/lsat-gradebook (private)
+#
+# LAN-ONLY, AND THAT IS LOAD-BEARING: the app has no login. Three layers keep
+# it off the internet:
+#   1. DNS: lsat.jacobbanghart.com exists only in Pi-hole
+#      (k8s-homelab/unifi/pihole_dns.tf). The IngressRoute opts out of
+#      external-dns, so no Cloudflare record is ever published.
+#   2. Reachability: WAN:443 is port-forwarded to Traefik, which routes by SNI,
+#      so an unpublished name still answers to anyone who guesses it (see the
+#      headlamp-public note). The lan-only IPAllowList middleware below is what
+#      actually closes that.
+#   3. NetworkPolicy: only Traefik and monitoring can reach the pod
+#      (network-policies/app-ingress.yaml).
+#
+# Single replica + Recreate is required, not a preference: SQLite plus an
+# in-process scheduler (deadline close, forfeits) must never run twice.
+#
+# Data: /data on a local-path PVC holds gradebook.db, the evidence photos, and
+# nightly VACUUM INTO snapshots in /data/backups (02:30 PT). The backup
+# namespace's 03:00 restic job ships all of /var/lib/local-path offsite, so the
+# snapshot taken half an hour earlier is always a consistent copy.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lsat-gradebook
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lsat-gradebook-data
+  namespace: lsat-gradebook
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 10Gi
+---
+# Private GHCR image. The token lives in Vault at lsat-gradebook/ghcr
+# (keys: username, token -- a GitHub PAT with read:packages only).
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: ghcr-pull
+  namespace: lsat-gradebook
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: ghcr-pull
+    creationPolicy: Owner
+    template:
+      type: kubernetes.io/dockerconfigjson
+      data:
+        .dockerconfigjson: '{"auths":{"ghcr.io":{"username":"{{ .username }}","password":"{{ .token }}","auth":"{{ printf "%s:%s" .username .token | b64enc }}"}}}'
+  dataFrom:
+    - extract:
+        key: lsat-gradebook/ghcr
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lsat-gradebook
+  namespace: lsat-gradebook
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: lsat-gradebook
+  template:
+    metadata:
+      labels:
+        app: lsat-gradebook
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: lsat-gradebook
+          # Built by .github/workflows/publish.yml in the app repo. Pinned to a
+          # commit tag so a new image is a manifest change Flux can see. Bump
+          # this line to deploy.
+          image: ghcr.io/jacobbanghart/lsat-gradebook:sha-b3727e4d948863088713bced4be2767b2343c4c4
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: DATA_DIR
+              value: /data
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "1000m"
+              # Pillow decodes full-size phone photos in memory on upload.
+              memory: "768Mi"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            # Read-only root: multipart uploads spool to /tmp.
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: lsat-gradebook-data
+        - name: tmp
+          emptyDir:
+            sizeLimit: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lsat-gradebook
+  namespace: lsat-gradebook
+spec:
+  selector:
+    app: lsat-gradebook
+  ports:
+    - port: 80
+      targetPort: 8000
+      name: http
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: lan-only
+  namespace: lsat-gradebook
+spec:
+  ipAllowList:
+    sourceRange:
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: lsat-gradebook
+  namespace: lsat-gradebook
+  annotations:
+    # Opt out of external-dns entirely (any value other than "dns-controller"
+    # makes every source skip the object). This name must never be public.
+    external-dns.alpha.kubernetes.io/controller: "none"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`lsat.jacobbanghart.com`)
+      kind: Rule
+      middlewares:
+        - name: lan-only
+      services:
+        - name: lsat-gradebook
+          port: 80
+  tls:
+    secretName: lsat-gradebook-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: lsat-gradebook-tls
+  namespace: lsat-gradebook
+spec:
+  secretName: lsat-gradebook-tls
+  duration: 2160h # 90d
+  # Staggered after the rest of the estate (15d..26d).
+  renewBefore: 648h # 27d
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - lsat.jacobbanghart.com
+  issuerRef:
+    name: letsencrypt-cloudflare
+    kind: ClusterIssuer
+    group: cert-manager.io
