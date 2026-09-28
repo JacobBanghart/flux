@@ -1,4 +1,4 @@
-# LSAT 170 Gradebook -- course gradebook for LSAT study (FastAPI + SQLite).
+# LSAT 170 Gradebook -- course gradebook for LSAT study (Next.js + SQLite).
 # Source: https://github.com/JacobBanghart/lsat-gradebook (private)
 #
 # LAN-ONLY, AND THAT IS LOAD-BEARING: the app has no login. Three layers keep
@@ -94,9 +94,9 @@ spec:
           # Built by .github/workflows/publish.yml in the app repo. Pinned to a
           # commit tag so a new image is a manifest change Flux can see. Bump
           # this line to deploy.
-          image: ghcr.io/jacobbanghart/lsat-gradebook:sha-bfcc7f21e0b93a0bf2acb10572012cc0b09fde75
+          image: ghcr.io/jacobbanghart/lsat-gradebook:sha-59508b0844a2ce343d1598eb55c27649c3769adc
           ports:
-            - containerPort: 8000
+            - containerPort: 3000
               name: http
           env:
             - name: DATA_DIR
@@ -107,24 +107,27 @@ spec:
               memory: "128Mi"
             limits:
               cpu: "1000m"
-              # Pillow decodes full-size phone photos in memory on upload.
+              # sharp decodes full-size phone photos in memory on upload.
               memory: "768Mi"
           volumeMounts:
             - name: data
               mountPath: /data
-            # Read-only root: multipart uploads spool to /tmp.
+            # Read-only root: multipart uploads spool to /tmp, and Next writes
+            # its runtime cache under .next/cache.
             - name: tmp
               mountPath: /tmp
+            - name: next-cache
+              mountPath: /app/.next/cache
           readinessProbe:
             httpGet:
-              path: /healthz
-              port: 8000
+              path: /api/healthz
+              port: 3000
             initialDelaySeconds: 3
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /healthz
-              port: 8000
+              path: /api/healthz
+              port: 3000
             initialDelaySeconds: 15
             periodSeconds: 30
           securityContext:
@@ -139,6 +142,9 @@ spec:
         - name: tmp
           emptyDir:
             sizeLimit: 512Mi
+        - name: next-cache
+          emptyDir:
+            sizeLimit: 256Mi
 ---
 apiVersion: v1
 kind: Service
@@ -150,7 +156,7 @@ spec:
     app: lsat-gradebook
   ports:
     - port: 80
-      targetPort: 8000
+      targetPort: 3000
       name: http
 ---
 apiVersion: traefik.io/v1alpha1
