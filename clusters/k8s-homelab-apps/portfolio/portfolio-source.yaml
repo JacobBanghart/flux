@@ -13,7 +13,9 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1m
-  url: ssh://git@github.com/JacobBanghart/astro-portfolio
+  # Port 443 (ssh.github.com): port 22 to some github.com addresses times out
+  # from the cluster network. known_hosts needs [ssh.github.com]:443 entries.
+  url: ssh://git@ssh.github.com:443/JacobBanghart/astro-portfolio
   secretRef:
     name: portfolio-repo-key
   ref:
