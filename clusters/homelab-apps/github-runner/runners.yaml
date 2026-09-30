@@ -77,6 +77,11 @@ spec:
   template:
     spec:
       repository: JacobBanghart/reactor-incremental-rebuild
+      # The summerwind runner plus .NET, Godot and the Xvfb/PIL packages CI would otherwise install on
+      # every job (reactor-incremental-rebuild: ci/runner/Dockerfile, tools/build_runner_image.sh).
+      image: ghcr.io/jacobbanghart/reactor-ci-runner:20260930
+      imagePullSecrets:
+        - name: ghcr-pull
       labels:
         - self-hosted
         - linux
