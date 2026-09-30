@@ -69,7 +69,11 @@ metadata:
   name: reactor-runner
   namespace: actions-runner-system
 spec:
-  replicas: 1
+  # Fixed warm pool of 5 (2026-09-30), no HRA -- same reasoning as ferrix-runner below: the CI run is ~10-16 min
+  # and its widest stage is 4 concurrent jobs (gut + 3 pixel-capture shards) plus sim/guard/changes at the start;
+  # max 3 made one shard queue every run (~3-4 min), and ARC's scale-up lag makes an HRA lose on timing anyway.
+  # An idle runner costs ~200Mi actual (512Mi requested). Pinned here; Flux reverts manual scaling.
+  replicas: 5
   template:
     spec:
       repository: JacobBanghart/reactor-incremental-rebuild
@@ -91,21 +95,7 @@ spec:
       env:
         - name: RUNNER_GRACEFUL_STOP_TIMEOUT
           value: "1800"
----
-apiVersion: actions.summerwind.dev/v1alpha1
-kind: HorizontalRunnerAutoscaler
-metadata:
-  name: reactor-runner-autoscaler
-  namespace: actions-runner-system
-spec:
-  scaleTargetRef:
-    name: reactor-runner
-  minReplicas: 1
-  maxReplicas: 3
-  metrics:
-    - type: TotalNumberOfQueuedAndInProgressWorkflowRuns
-      repositoryNames:
-        - JacobBanghart/reactor-incremental-rebuild
+
 ---
 # Runner for ReclaimerGold/Ferrix -- capped at 4 cores / 4Gi per runner.
 #
