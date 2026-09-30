@@ -73,7 +73,8 @@ spec:
   # and its widest stage is 4 concurrent jobs (gut + 3 pixel-capture shards) plus sim/guard/changes at the start;
   # max 3 made one shard queue every run (~3-4 min), and ARC's scale-up lag makes an HRA lose on timing anyway.
   # An idle runner costs ~200Mi actual (512Mi requested). Pinned here; Flux reverts manual scaling.
-  replicas: 5
+  # 7 since 2026-10-01: CI runs sim, gut and 5 pixel-capture shards at once (no job waits on sim).
+  replicas: 7
   template:
     spec:
       repository: JacobBanghart/reactor-incremental-rebuild
