@@ -88,21 +88,9 @@ data:
         source: sensor.smart_plug_4_daily_energy
         cycle: yearly
 
-    # Proxmox VE Integration (binary sensors for VM status only)
-    # On Proxmox: pveum passwd homeassistant@pve (to set password)
-    # Assign permissions: pveum aclmod / -user homeassistant@pve -role PVEAuditor
-    proxmoxve:
-      - host: !secret proxmox_host
-        username: !secret proxmox_username
-        password: !secret proxmox_password
-        verify_ssl: false
-        nodes:
-          - node: prox
-            vms:
-              - 101  # pihole
-              - 102  # dev
-              - 103  # truenas
-              - 104  # ryan
+    # Proxmox VE: configured in the UI (config entry "10.1.0.99", imported
+    # from the YAML block that used to live here). HA 2026.8+ rejects
+    # proxmoxve YAML setup. Proxmox user: homeassistant@pve, role PVEAuditor.
 
   ui-lovelace.yaml: |
     title: Power Monitor
