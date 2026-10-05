@@ -114,6 +114,9 @@ metadata:
   namespace: nextcloud
 spec:
   interval: 10m
+  # A major-version image bump runs `occ upgrade` in the entrypoint before
+  # Apache starts; on a slow migration the default 5m Helm wait expires.
+  timeout: 30m
   chart:
     spec:
       chart: nextcloud
@@ -125,10 +128,19 @@ spec:
   install:
     remediation:
       retries: 3
+  # No upgrade remediation: Flux's default remediation is a Helm rollback,
+  # and rolling the image back after `occ upgrade` has migrated the DB
+  # leaves old code on a newer schema (Nextcloud refuses to start).
+  # Restore from backup instead (offsite-backup dumps this DB nightly).
   upgrade:
     remediation:
-      retries: 3
+      retries: 0
   values:
+    # Nextcloud majors must be stepped one at a time (30 -> 31 -> ... ),
+    # each from the latest patch of the previous major. Stepped 30.0.10 ->
+    # 35.0.1 on 2026-10-05 under chart 6.6.10.
+    image:
+      tag: 30.0.17-apache
     nextcloud:
       host: nextcloud.jacobbanghart.com
       existingSecret:
@@ -208,12 +220,14 @@ spec:
       failureThreshold: 3
       successThreshold: 1
 
+    # 15 min: covers `occ upgrade` on a major bump, which runs before Apache
+    # answers status.php. 20 (~3 min) would kill the pod mid-migration.
     startupProbe:
       enabled: true
       initialDelaySeconds: 10
       periodSeconds: 10
       timeoutSeconds: 5
-      failureThreshold: 20
+      failureThreshold: 90
       successThreshold: 1
 
     extraVolumes:
