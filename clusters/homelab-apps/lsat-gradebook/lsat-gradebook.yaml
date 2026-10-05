@@ -93,7 +93,7 @@ spec:
           # Built by .github/workflows/publish.yml in the app repo. Pinned to a
           # commit tag so a new image is a manifest change Flux can see. Bump
           # this line to deploy.
-          image: ghcr.io/jacobbanghart/lsat-gradebook:sha-ae69faf252ba82d69f4c645d309bcbfb61167bf9
+          image: ghcr.io/jacobbanghart/lsat-gradebook:sha-f59e37578571c9d9841a13932a57dcde7dcc5ef8
           ports:
             - containerPort: 3000
               name: http
