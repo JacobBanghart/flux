@@ -52,9 +52,9 @@ spec:
         - name: esphome
           # Pinned 2026-09-14. :latest meant an unannounced ESPHome upgrade
           # on every pod restart, which can require reflashing devices to match.
-          # This digest is 2026.8.2, the version that was running when pinned.
+          # Was 2026.8.2 when pinned; bumped to 2026.9.1 on 2026-10-05.
           # Bump deliberately, ideally alongside the Home Assistant version.
-          image: ghcr.io/esphome/esphome@sha256:000c5ee5ee96d57208ee48f2d255f73713236f183959803e64cd0b00c39b277b
+          image: ghcr.io/esphome/esphome:2026.9.1@sha256:776a845d508909bf426d2ee7bdd81796361ebe6a7f091807ce1d6d0b48985413
           ports:
             - containerPort: 6052
               name: http

@@ -72,7 +72,7 @@ spec:
           # NOTE: Vaultwarden runs DB migrations on startup, so downgrading
           # below 1.37 after this is not supported -- roll back from the S3
           # backup instead, not by reverting this tag.
-          image: vaultwarden/server:1.37.1
+          image: vaultwarden/server:1.37.3
           ports:
             - containerPort: 80
               name: http
