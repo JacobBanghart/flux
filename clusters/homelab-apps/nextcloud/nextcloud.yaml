@@ -140,7 +140,7 @@ spec:
     # each from the latest patch of the previous major. Stepped 30.0.10 ->
     # 35.0.1 on 2026-10-05 under chart 6.6.10.
     image:
-      tag: 31.0.14-apache
+      tag: 32.0.15-apache
     nextcloud:
       host: nextcloud.jacobbanghart.com
       existingSecret:
