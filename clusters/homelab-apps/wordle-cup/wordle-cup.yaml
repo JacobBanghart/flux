@@ -1,0 +1,158 @@
+# Game Day Wordle -- multiplayer race Wordle with room codes for a one-off
+# game day (2026-10-16). Source: https://github.com/JacobBanghart/wordle-cup (private)
+#
+# TEMPORARY: comes down after game day. Teardown is deleting this directory and
+# the wordle-cup block in network-policies/app-ingress.yaml; external-dns then
+# removes the public record.
+#
+# PUBLIC WITH NO LOGIN, by design: players are friends joining from their own
+# phones with a 4-letter room code. There is nothing stored -- every room lives
+# in process memory and disappears on restart -- so the exposure is someone
+# guessing a code and joining a lobby. The app sends noindex.
+#
+# Single replica + Recreate is required: all game state is in memory, so two
+# pods would split rooms between them. A restart ends every game in progress;
+# don't roll this during a game.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wordle-cup
+---
+# Private GHCR image. Reuses the gradebook's pull token (Vault
+# lsat-gradebook/ghcr: the devbox `gh auth token`, read:packages), which can
+# read every package on the account; no new Vault secret for a one-day app.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: ghcr-pull
+  namespace: wordle-cup
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: ghcr-pull
+    creationPolicy: Owner
+    template:
+      type: kubernetes.io/dockerconfigjson
+      data:
+        .dockerconfigjson: '{"auths":{"ghcr.io":{"username":"{{ .username | trim }}","password":"{{ .token | trim }}","auth":"{{ printf "%s:%s" (.username | trim) (.token | trim) | b64enc }}"}}}'
+  dataFrom:
+    - extract:
+        key: lsat-gradebook/ghcr
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordle-cup
+  namespace: wordle-cup
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: wordle-cup
+  template:
+    metadata:
+      labels:
+        app: wordle-cup
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      # Players' sockets drop on shutdown either way; no point waiting.
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: wordle-cup
+          # Built by .github/workflows/publish.yml in the app repo. Bump this
+          # line to deploy.
+          image: ghcr.io/jacobbanghart/wordle-cup:sha-5726c42eb3e7e804dcef3173330a0a3627d85fac
+          ports:
+            - containerPort: 3000
+              name: http
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "1000m"
+              memory: "256Mi"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordle-cup
+  namespace: wordle-cup
+spec:
+  selector:
+    app: wordle-cup
+  ports:
+    - port: 80
+      targetPort: 3000
+      name: http
+---
+# Traefik proxies the /ws WebSocket upgrade with no extra config; the server
+# pings every 20s, well inside the entrypoint idle timeout.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: wordle-cup
+  namespace: wordle-cup
+  annotations:
+    # An IngressRoute carries no LoadBalancer status, so external-dns needs an
+    # explicit target or it silently creates no record (see lsat-gradebook).
+    external-dns.alpha.kubernetes.io/target: "68.170.78.3"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`wordle.jacobbanghart.com`)
+      kind: Rule
+      services:
+        - name: wordle-cup
+          port: 80
+  tls:
+    secretName: wordle-cup-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wordle-cup-tls
+  namespace: wordle-cup
+spec:
+  secretName: wordle-cup-tls
+  duration: 2160h # 90d
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - wordle.jacobbanghart.com
+  issuerRef:
+    name: letsencrypt-cloudflare
+    kind: ClusterIssuer
