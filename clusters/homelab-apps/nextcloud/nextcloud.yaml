@@ -138,9 +138,10 @@ spec:
   values:
     # Nextcloud majors must be stepped one at a time (30 -> 31 -> ... ),
     # each from the latest patch of the previous major. Stepped 30.0.10 ->
-    # 35.0.1 on 2026-10-05 under chart 6.6.10.
+    # 35.0.1 on 2026-10-05 under chart 6.6.10. 35.0.2 on 2026-10-21 for
+    # PHP 8.5.12 (CVE-2026-109618/109619, "PHP2Shell").
     image:
-      tag: 35.0.1-apache
+      tag: 35.0.2-apache
     nextcloud:
       host: nextcloud.jacobbanghart.com
       existingSecret:
