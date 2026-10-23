@@ -75,7 +75,7 @@ spec:
         - name: wordle-cup
           # Built by .github/workflows/publish.yml in the app repo. Bump this
           # line to deploy.
-          image: ghcr.io/jacobbanghart/wordle-cup:sha-5726c42eb3e7e804dcef3173330a0a3627d85fac
+          image: ghcr.io/jacobbanghart/wordle-cup:sha-55d041d3892801cecd4d75aa07cb394e9de082ea
           ports:
             - containerPort: 3000
               name: http
