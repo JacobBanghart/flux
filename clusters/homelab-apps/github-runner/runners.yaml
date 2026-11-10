@@ -36,6 +36,31 @@ spec:
       env:
         - name: RUNNER_GRACEFUL_STOP_TIMEOUT
           value: "1800"
+      # Workspace and dind's image store on the data disk, not the node's
+      # root disk -- see storageclass.yaml. A volume named `work` replaces
+      # ARC's default emptyDir for /runner/_work in both containers.
+      dockerVolumeMounts:
+        - name: docker
+          mountPath: /var/lib/docker
+      volumes:
+        - name: work
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ReadWriteOnce]
+                storageClassName: local-path-ephemeral
+                resources:
+                  requests:
+                    storage: 20Gi
+        - name: docker
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ReadWriteOnce]
+                storageClassName: local-path-ephemeral
+                resources:
+                  requests:
+                    storage: 30Gi
 ---
 apiVersion: actions.summerwind.dev/v1alpha1
 kind: HorizontalRunnerAutoscaler
@@ -80,7 +105,7 @@ spec:
       repository: JacobBanghart/reactor-incremental-rebuild
       # The summerwind runner plus .NET, Godot and the Xvfb/PIL packages CI would otherwise install on
       # every job (reactor-incremental-rebuild: ci/runner/Dockerfile, tools/build_runner_image.sh).
-      image: ghcr.io/jacobbanghart/reactor-ci-runner:20260930
+      image: ghcr.io/jacobbanghart/reactor-ci-runner:20261110
       imagePullSecrets:
         - name: ghcr-pull
       labels:
@@ -101,6 +126,23 @@ spec:
       env:
         - name: RUNNER_GRACEFUL_STOP_TIMEOUT
           value: "1800"
+      # Workspace on the data disk, not the node's root disk -- see
+      # storageclass.yaml. No dind here, so no /var/lib/docker volume, and
+      # ARC only mounts a `work` volume itself in dind mode -- hence the
+      # explicit mount. Without it _work sits inside the /runner emptyDir.
+      volumeMounts:
+        - name: work
+          mountPath: /runner/_work
+      volumes:
+        - name: work
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ReadWriteOnce]
+                storageClassName: local-path-ephemeral
+                resources:
+                  requests:
+                    storage: 20Gi
 
 ---
 # Runner for ReclaimerGold/Ferrix -- capped at 4 cores / 4Gi per runner.
@@ -261,11 +303,20 @@ spec:
       # give inconsistent cache hits -- switched to a shared
       # ceph-filesystem (RWX) PVC instead so the cache is consistent
       # regardless of which worker schedules the pod.
+      #
+      # `work` and `docker` put the per-job workspace and dind's image store
+      # on the data disk instead of the node's root disk -- see
+      # storageclass.yaml. They're per pod and deleted with it; the two
+      # caches above are untouched. A volume named `work` replaces ARC's
+      # default emptyDir for /runner/_work in both containers.
       volumeMounts:
         - name: tool-cache
           mountPath: /opt/hostedtoolcache
         - name: npm-cache
           mountPath: /cache/npm
+      dockerVolumeMounts:
+        - name: docker
+          mountPath: /var/lib/docker
       volumes:
         - name: tool-cache
           persistentVolumeClaim:
@@ -273,6 +324,24 @@ spec:
         - name: npm-cache
           persistentVolumeClaim:
             claimName: ferrix-npm-cache
+        - name: work
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ReadWriteOnce]
+                storageClassName: local-path-ephemeral
+                resources:
+                  requests:
+                    storage: 20Gi
+        - name: docker
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ReadWriteOnce]
+                storageClassName: local-path-ephemeral
+                resources:
+                  requests:
+                    storage: 30Gi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

@@ -1,0 +1,24 @@
+# Scratch disk for ephemeral CI runners (2026-11-09).
+#
+# Runner workspaces (/runner/_work) and dind's /var/lib/docker used to be
+# emptyDir / container overlay, i.e. on k8s-homelab-0's 99G root disk, which
+# idles at ~22G free. Overlapping Ferrix runs (11 jobs each restoring a full
+# node_modules copy, plus 3 image builds) pushed it under kubelet's 10%
+# nodefs threshold on 2026-11-10 ~02:12 UTC: DiskPressure, ~30 runner pods
+# evicted, both in-flight Ferrix CI runs failed with "runner lost
+# communication". Generic ephemeral volumes on this class land on the 1T
+# data disk (/dev/sdb at /var/lib/local-path) instead.
+#
+# Separate from the default `local-path` class because that one is
+# reclaimPolicy: Retain -- every runner pod would leave its PV directory
+# behind forever. Delete makes local-path's helper pod rm -rf the
+# directory when ARC deletes the pod after its job.
+#
+# local-path doesn't enforce the requested size; it's nominal.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-path-ephemeral
+provisioner: rancher.io/local-path
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
