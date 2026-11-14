@@ -1,0 +1,81 @@
+server_url: https://headscale.jacobbanghart.com
+listen_addr: 0.0.0.0:8080
+# In-cluster only: the namespace's NetworkPolicy admits Traefik and
+# monitoring, and only 8080 is routed by Traefik.
+metrics_listen_addr: 0.0.0.0:9090
+grpc_listen_addr: 127.0.0.1:50443
+grpc_allow_insecure: false
+noise:
+  private_key_path: /var/lib/headscale/noise_private.key
+prefixes:
+  v4: 100.64.0.0/10
+  v6: fd7a:115c:a1e0::/48
+  allocation: sequential
+derp:
+  server:
+    # The embedded relay needs UDP 3478 forwarded through the UDM; not
+    # worth it until Tailscale's public relays become a problem.
+    enabled: false
+  urls:
+    - https://controlplane.tailscale.com/derpmap/default
+  paths: []
+  auto_update_enabled: true
+  update_frequency: 3h
+disable_check_updates: true
+node:
+  expiry: 0
+  ephemeral:
+    inactivity_timeout: 30m
+database:
+  type: sqlite
+  sqlite:
+    path: /var/lib/headscale/db.sqlite
+    write_ahead_log: true
+log:
+  level: info
+  format: text
+policy:
+  mode: file
+  # policy.hujson, from the kustomization's configMapGenerator.
+  path: /etc/headscale/policy/policy.hujson
+dns:
+  # MagicDNS names (<host>.ts.jacobbanghart.com) without taking over each
+  # device's resolver: LAN names like truenas.home keep working.
+  magic_dns: true
+  base_domain: ts.jacobbanghart.com
+  override_local_dns: false
+  nameservers:
+    global: []
+    # Only the LAN-only names go to Pi-hole (reached through tsrouter's
+    # subnet route). The rest of jacobbanghart.com keeps resolving publicly,
+    # so public sites don't break on a phone if tsrouter is down.
+    split:
+      k8s-homelab.jacobbanghart.com:
+        - 10.1.0.142
+      home:
+        - 10.1.0.142
+  search_domains: []
+  extra_records: []
+unix_socket: /var/run/headscale/headscale.sock
+unix_socket_permission: "0770"
+logtail:
+  enabled: false
+taildrop:
+  enabled: true
+# Authentik login (application "Headscale", bound to the "authentik Admins"
+# group in Authentik, so only the owner can register a device). The client
+# secret comes from Vault secret/headscale/oidc via the headscale-oidc
+# ExternalSecret.
+oidc:
+  # Authentik runs in this cluster too: after a node reboot Headscale must
+  # not wait for it, or nothing can reconnect until both are up.
+  only_start_if_oidc_is_available: false
+  issuer: https://auth.jacobbanghart.com/application/o/headscale/
+  client_id: wSNpuMUxkUtjSrbg8aFoLn8mqgdVKEp2XlEhROGe
+  client_secret_path: /etc/headscale/oidc/client_secret
+  scope: ["openid", "profile", "email"]
+  allowed_groups:
+    - authentik Admins
+  pkce:
+    enabled: true
+    method: S256

@@ -1,0 +1,41 @@
+// Headscale tailnet policy (HuJSON). Loaded from the headscale-policy
+// ConfigMap, which has a content hash in its name, so any edit here rolls the pod.
+//
+// Users: "jacob" is the CLI-created user that owns devbox and omarchy.
+// "akadmin" is the owner's Authentik login (OIDC), used by the iPhone and
+// any device registered through the browser. Both are the owner.
+{
+  "groups": {
+    "group:admin": ["jacob@", "akadmin@"],
+  },
+
+  "tagOwners": {
+    // tsrouter: subnet router + exit node (Proxmox CT 202).
+    "tag:router": ["group:admin"],
+    // Headless boxes that should talk to each other (e.g. devbox -> Mac
+    // for T3's iOS device host) without being tied to a person's login.
+    "tag:server": ["group:admin"],
+  },
+
+  "autoApprovers": {
+    "routes": {
+      "10.1.0.0/24": ["tag:router"], // primary LAN
+      "10.4.0.0/24": ["tag:router"], // k8s-lab VLAN
+    },
+    "exitNode": ["tag:router"],
+  },
+
+  "acls": [
+    // The owner's devices reach everything: every node, the advertised
+    // subnets, and the internet through the exit node.
+    {"action": "accept", "src": ["group:admin"], "dst": ["*:*"]},
+    {"action": "accept", "src": ["group:admin"], "dst": ["autogroup:internet:*"]},
+    // Tagged servers can reach each other, and nothing else on their own.
+    {"action": "accept", "src": ["tag:server"], "dst": ["tag:server:*"]},
+  ],
+
+  "ssh": [
+    // Tailscale SSH into the router, no keys needed (`tailscale ssh root@tsrouter`).
+    {"action": "accept", "src": ["group:admin"], "dst": ["tag:router"], "users": ["root"]},
+  ],
+}

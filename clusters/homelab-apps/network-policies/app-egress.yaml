@@ -75,8 +75,11 @@ spec:
               - 192.168.0.0/16
               - 169.254.0.0/16
 ---
-# headscale only talks to its clients (inbound, via Traefik) and fetches
-# Tailscale's DERP map from controlplane.tailscale.com. Nothing internal.
+# headscale talks to its clients (inbound, via Traefik), fetches Tailscale's
+# DERP map from controlplane.tailscale.com, and makes back-channel OIDC calls
+# to Authentik. CoreDNS pins auth.jacobbanghart.com to Traefik's LB IP, which
+# Cilium resolves to the Traefik pod, so that rule names Traefik's websecure
+# port rather than an internal IP range.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -101,6 +104,16 @@ spec:
           port: 53
     - to:
         - podSelector: {}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - protocol: TCP
+          port: 8443
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0

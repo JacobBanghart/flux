@@ -2,15 +2,17 @@
 # traffic flows through it). Peers connect to each other directly, or via
 # Tailscale's public DERP relays when NAT gets in the way.
 #
-# Devices join with pre-auth keys minted in the pod:
-#   kubectl -n headscale exec deploy/headscale -- headscale users create jacob
-#   kubectl -n headscale exec deploy/headscale -- headscale preauthkeys create --user <id> --expiration 1h
-#   tailscale up --login-server https://headscale.jacobbanghart.com --authkey <key>
-# Authentik (OIDC) login can be added later; it needs an Authentik provider and
-# a Vault entry, like mealie/oidc.
+# Config, policy and the Authentik login are in config.yaml and
+# policy.hujson next to this file (see kustomization.yaml).
 #
-# No ACL policy yet, so every node can reach every other node. Fine while
-# every node is the owner's; add one before anyone else joins.
+# Devices join either through Authentik in the browser (phones, laptops):
+#   tailscale up --login-server https://headscale.jacobbanghart.com
+# or, for headless boxes, with a pre-auth key minted in the pod:
+#   kubectl -n headscale exec deploy/headscale -- headscale preauthkeys create --user <id> --expiration 1h [--tags tag:server]
+#   tailscale up --login-server https://headscale.jacobbanghart.com --authkey <key>
+#
+# The subnet router + exit node is tsrouter (Proxmox CT 202,
+# k8s-homelab/terraform/lxc-tsrouter.tf), not anything in this cluster.
 #
 # If this pod is down, already-connected devices keep working. Only new
 # logins and changes stop.
@@ -31,70 +33,26 @@ spec:
   resources:
     requests:
       storage: 1Gi
+
 ---
-apiVersion: v1
-kind: ConfigMap
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
 metadata:
-  name: headscale-config
+  name: headscale-oidc
   namespace: headscale
-data:
-  config.yaml: |
-    server_url: https://headscale.jacobbanghart.com
-    listen_addr: 0.0.0.0:8080
-    # In-cluster only: the namespace's NetworkPolicy admits Traefik and
-    # monitoring, and only 8080 is routed by Traefik.
-    metrics_listen_addr: 0.0.0.0:9090
-    grpc_listen_addr: 127.0.0.1:50443
-    grpc_allow_insecure: false
-    noise:
-      private_key_path: /var/lib/headscale/noise_private.key
-    prefixes:
-      v4: 100.64.0.0/10
-      v6: fd7a:115c:a1e0::/48
-      allocation: sequential
-    derp:
-      server:
-        # The embedded relay needs UDP 3478 forwarded through the UDM; not
-        # worth it until Tailscale's public relays become a problem.
-        enabled: false
-      urls:
-        - https://controlplane.tailscale.com/derpmap/default
-      paths: []
-      auto_update_enabled: true
-      update_frequency: 3h
-    disable_check_updates: true
-    node:
-      expiry: 0
-      ephemeral:
-        inactivity_timeout: 30m
-    database:
-      type: sqlite
-      sqlite:
-        path: /var/lib/headscale/db.sqlite
-        write_ahead_log: true
-    log:
-      level: info
-      format: text
-    policy:
-      mode: file
-      path: ""
-    dns:
-      # MagicDNS names (<host>.ts.jacobbanghart.com) without taking over each
-      # device's resolver: LAN names like truenas.home keep working.
-      magic_dns: true
-      base_domain: ts.jacobbanghart.com
-      override_local_dns: false
-      nameservers:
-        global: []
-        split: {}
-      search_domains: []
-      extra_records: []
-    unix_socket: /var/run/headscale/headscale.sock
-    unix_socket_permission: "0770"
-    logtail:
-      enabled: false
-    taildrop:
-      enabled: true
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: headscale-oidc
+    creationPolicy: Owner
+  data:
+    - secretKey: client_secret
+      remoteRef:
+        key: headscale/oidc
+        property: client_secret
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -148,8 +106,18 @@ spec:
             - name: metrics
               containerPort: 9090
           volumeMounts:
+            # subPath keeps the default path the in-pod `headscale` CLI reads.
+            # subPath files don't live-update; fine, since a config change
+            # renames the generated ConfigMap and rolls the pod anyway.
             - name: config
-              mountPath: /etc/headscale
+              mountPath: /etc/headscale/config.yaml
+              subPath: config.yaml
+              readOnly: true
+            - name: policy
+              mountPath: /etc/headscale/policy
+              readOnly: true
+            - name: oidc
+              mountPath: /etc/headscale/oidc
               readOnly: true
             - name: data
               mountPath: /var/lib/headscale
@@ -170,6 +138,13 @@ spec:
         - name: config
           configMap:
             name: headscale-config
+        - name: policy
+          configMap:
+            name: headscale-policy
+        - name: oidc
+          secret:
+            secretName: headscale-oidc
+            defaultMode: 0440
         - name: data
           persistentVolumeClaim:
             claimName: headscale-data
