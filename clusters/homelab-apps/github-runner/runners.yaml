@@ -368,3 +368,206 @@ spec:
   resources:
     requests:
       storage: 5Gi
+---
+# Runner for JacobBanghart/retro (private repo -- self-hosted so CI doesn't
+# bill GitHub-hosted minutes). Retro board (clusters/homelab-apps/retro): typecheck, Vitest,
+# Playwright e2e and the GHCR image push.
+#
+# One fixed warm runner, no HRA: the whole workflow is one job of a few
+# minutes, pushes are infrequent, and ARC's scale-up lag would cost more than
+# the queue it saves. dind is on for the image build. Requests are kept small
+# because the node sits at ~93% requested memory (2026-11-19); the job itself
+# is a Node build plus Playwright Chromium, well under the 3Gi limit.
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: RunnerDeployment
+metadata:
+  name: retro-runner
+  namespace: actions-runner-system
+spec:
+  replicas: 1
+  template:
+    spec:
+      repository: JacobBanghart/retro
+      labels:
+        - self-hosted
+        - linux
+      dockerEnabled: true
+      ephemeral: true
+      # Same mid-job kill protection as the other pools -- see ferrix-runner's
+      # long comment for why both values are required.
+      terminationGracePeriodSeconds: 1800
+      env:
+        - name: RUNNER_GRACEFUL_STOP_TIMEOUT
+          value: "1800"
+      resources:
+        limits:
+          cpu: "4"
+          memory: 3Gi
+        requests:
+          cpu: "50m"
+          memory: 256Mi
+      dockerdContainerResources:
+        limits:
+          cpu: "1"
+          memory: 1Gi
+        requests:
+          cpu: "25m"
+          memory: 64Mi
+      # Workspace and dind's image store on the data disk -- see storageclass.yaml.
+      dockerVolumeMounts:
+        - name: docker
+          mountPath: /var/lib/docker
+      volumes:
+        - name: work
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ReadWriteOnce]
+                storageClassName: local-path-ephemeral
+                resources:
+                  requests:
+                    storage: 10Gi
+        - name: docker
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ReadWriteOnce]
+                storageClassName: local-path-ephemeral
+                resources:
+                  requests:
+                    storage: 15Gi
+---
+# Runner for JacobBanghart/wordle-cup (private repo -- self-hosted so CI doesn't
+# bill GitHub-hosted minutes). Game Day Wordle; moved off ubuntu-latest 2026-11-19.
+# Remove together with the wordle-cup app at teardown.
+#
+# One fixed warm runner, no HRA: the whole workflow is one job of a few
+# minutes, pushes are infrequent, and ARC's scale-up lag would cost more than
+# the queue it saves. dind is on for the image build. Requests are kept small
+# because the node sits at ~93% requested memory (2026-11-19); the job itself
+# is a Node build plus Playwright Chromium, well under the 3Gi limit.
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: RunnerDeployment
+metadata:
+  name: wordle-cup-runner
+  namespace: actions-runner-system
+spec:
+  replicas: 1
+  template:
+    spec:
+      repository: JacobBanghart/wordle-cup
+      labels:
+        - self-hosted
+        - linux
+      dockerEnabled: true
+      ephemeral: true
+      # Same mid-job kill protection as the other pools -- see ferrix-runner's
+      # long comment for why both values are required.
+      terminationGracePeriodSeconds: 1800
+      env:
+        - name: RUNNER_GRACEFUL_STOP_TIMEOUT
+          value: "1800"
+      resources:
+        limits:
+          cpu: "4"
+          memory: 3Gi
+        requests:
+          cpu: "50m"
+          memory: 256Mi
+      dockerdContainerResources:
+        limits:
+          cpu: "1"
+          memory: 1Gi
+        requests:
+          cpu: "25m"
+          memory: 64Mi
+      # Workspace and dind's image store on the data disk -- see storageclass.yaml.
+      dockerVolumeMounts:
+        - name: docker
+          mountPath: /var/lib/docker
+      volumes:
+        - name: work
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ReadWriteOnce]
+                storageClassName: local-path-ephemeral
+                resources:
+                  requests:
+                    storage: 10Gi
+        - name: docker
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ReadWriteOnce]
+                storageClassName: local-path-ephemeral
+                resources:
+                  requests:
+                    storage: 15Gi
+---
+# Runner for JacobBanghart/lsat-gradebook (private repo -- self-hosted so CI doesn't
+# bill GitHub-hosted minutes). LSAT gradebook; moved off ubuntu-latest 2026-11-19.
+#
+# One fixed warm runner, no HRA: the whole workflow is one job of a few
+# minutes, pushes are infrequent, and ARC's scale-up lag would cost more than
+# the queue it saves. dind is on for the image build. Requests are kept small
+# because the node sits at ~93% requested memory (2026-11-19); the job itself
+# is a Node build plus Playwright Chromium, well under the 3Gi limit.
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: RunnerDeployment
+metadata:
+  name: lsat-gradebook-runner
+  namespace: actions-runner-system
+spec:
+  replicas: 1
+  template:
+    spec:
+      repository: JacobBanghart/lsat-gradebook
+      labels:
+        - self-hosted
+        - linux
+      dockerEnabled: true
+      ephemeral: true
+      # Same mid-job kill protection as the other pools -- see ferrix-runner's
+      # long comment for why both values are required.
+      terminationGracePeriodSeconds: 1800
+      env:
+        - name: RUNNER_GRACEFUL_STOP_TIMEOUT
+          value: "1800"
+      resources:
+        limits:
+          cpu: "4"
+          memory: 3Gi
+        requests:
+          cpu: "50m"
+          memory: 256Mi
+      dockerdContainerResources:
+        limits:
+          cpu: "1"
+          memory: 1Gi
+        requests:
+          cpu: "25m"
+          memory: 64Mi
+      # Workspace and dind's image store on the data disk -- see storageclass.yaml.
+      dockerVolumeMounts:
+        - name: docker
+          mountPath: /var/lib/docker
+      volumes:
+        - name: work
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ReadWriteOnce]
+                storageClassName: local-path-ephemeral
+                resources:
+                  requests:
+                    storage: 10Gi
+        - name: docker
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ReadWriteOnce]
+                storageClassName: local-path-ephemeral
+                resources:
+                  requests:
+                    storage: 15Gi
