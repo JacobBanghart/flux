@@ -1,0 +1,183 @@
+# Retro -- free self-hosted retro board (TeamRetro replacement) for one team.
+# Source: https://github.com/JacobBanghart/retro (private); scope in SPEC.md.
+#
+# PUBLIC URL, GATED BY AN INVITE CODE: everything except /healthz and the join
+# screen needs a session from the team's invite code (hashed in the DB, 90-day
+# cookie, per-IP limit on failed attempts). On first start with an empty DB the
+# app generates the code and prints it once to the pod log; anyone signed in
+# can rotate it under Settings. Content is anonymous but candid work feedback.
+#
+# DATA: SQLite on a local-path PVC. There is deliberately no backup job -- the
+# owner chose the in-app Markdown export as the team's archive (2026-11-19).
+#
+# Single replica + Recreate: SQLite file plus in-memory live-sync fan-out.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: retro
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: retro-data
+  namespace: retro
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 2Gi
+---
+# Private GHCR image. Reuses the gradebook's pull token (Vault
+# lsat-gradebook/ghcr: the devbox `gh auth token`, read:packages), which can
+# read every package on the account.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: ghcr-pull
+  namespace: retro
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: ghcr-pull
+    creationPolicy: Owner
+    template:
+      type: kubernetes.io/dockerconfigjson
+      data:
+        .dockerconfigjson: '{"auths":{"ghcr.io":{"username":"{{ .username | trim }}","password":"{{ .token | trim }}","auth":"{{ printf "%s:%s" (.username | trim) (.token | trim) | b64enc }}"}}}'
+  dataFrom:
+    - extract:
+        key: lsat-gradebook/ghcr
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retro
+  namespace: retro
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: retro
+  template:
+    metadata:
+      labels:
+        app: retro
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: retro
+          # Built by .github/workflows/ci.yml in the app repo. Bump this line
+          # to deploy.
+          image: ghcr.io/jacobbanghart/retro:sha-e01c326a75277909ab2dafc3e5b44aece9cc81f4
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            - name: DATABASE_PATH
+              value: /data/retro.db
+            # Traefik is the only proxy in front (DNS points straight at the
+            # WAN IP, no Cloudflare proxying), so the last X-Forwarded-For
+            # entry is the client.
+            - name: TRUST_PROXY
+              value: "1"
+          resources:
+            requests:
+              cpu: "25m"
+              memory: "64Mi"
+            limits:
+              cpu: "1000m"
+              memory: "256Mi"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: retro-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: retro
+  namespace: retro
+spec:
+  selector:
+    app: retro
+  ports:
+    - port: 80
+      targetPort: 3000
+      name: http
+---
+# Traefik proxies the /ws WebSocket upgrade with no extra config.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: retro
+  namespace: retro
+  annotations:
+    # An IngressRoute carries no LoadBalancer status, so external-dns needs an
+    # explicit target or it silently creates no record (see lsat-gradebook).
+    external-dns.alpha.kubernetes.io/target: "68.170.78.3"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`retro.jacobbanghart.com`)
+      kind: Rule
+      services:
+        - name: retro
+          port: 80
+  tls:
+    secretName: retro-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: retro-tls
+  namespace: retro
+spec:
+  secretName: retro-tls
+  duration: 2160h # 90d
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - retro.jacobbanghart.com
+  issuerRef:
+    name: letsencrypt-cloudflare
+    kind: ClusterIssuer
