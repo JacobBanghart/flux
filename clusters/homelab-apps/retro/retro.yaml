@@ -86,7 +86,7 @@ spec:
         - name: retro
           # Built by .github/workflows/ci.yml in the app repo. Bump this line
           # to deploy.
-          image: ghcr.io/jacobbanghart/retro:sha-d6704bc05cca8c488f584b899daa4539e59f268b
+          image: ghcr.io/jacobbanghart/retro:sha-3714410063861decb8a6ce84e34b25ff85cddffc
           ports:
             - containerPort: 3000
               name: http
