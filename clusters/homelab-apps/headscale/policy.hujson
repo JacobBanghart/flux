@@ -1,12 +1,12 @@
 // Headscale tailnet policy (HuJSON). Loaded from the headscale-policy
 // ConfigMap, which has a content hash in its name, so any edit here rolls the pod.
 //
-// Users: "jacob" is the CLI-created user that owns devbox and omarchy.
-// "akadmin" is the owner's Authentik login (OIDC), used by the iPhone and
-// any device registered through the browser. Both are the owner.
+// Users: "akadmin" is the owner's Authentik login (OIDC). Every personal
+// device (devbox, omarchy, iPhone) is registered to it, because Taildrop only
+// sends between nodes of the same user. Headless boxes use tags instead.
 {
   "groups": {
-    "group:admin": ["jacob@", "akadmin@"],
+    "group:admin": ["akadmin@"],
   },
 
   "tagOwners": {
