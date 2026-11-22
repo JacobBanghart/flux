@@ -291,7 +291,7 @@ spec:
     - match: Host(`invoice-ninja.jacobbanghart.com`)
       kind: Rule
       services:
-        - name: invoiceninja-web
+        - name: invoice-ninja-hc-web
           port: 8080
   tls:
     secretName: invoice-ninja-tls
