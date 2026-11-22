@@ -145,7 +145,12 @@ metadata:
     # with zero targets before --default-targets is ever consulted, which only
     # rewrites endpoints that already exist. Without this the app gets no
     # record at all, silently.
-    external-dns.alpha.kubernetes.io/target: "68.170.78.3"
+    # PRIVATE since 2026-11-21 (owner decision): the A record points at the
+    # internal Traefik VIP, so the name resolves anywhere but only connects
+    # from the LAN or the tailnet (tsrouter advertises 10.4.0.0/24). The route
+    # sits only on `websecure`, the internal entrypoint; WAN 443 forwards to
+    # the separate `public` entrypoint (k8s-homelab traefik/release.yaml).
+    external-dns.alpha.kubernetes.io/target: "10.4.0.200"
 spec:
   entryPoints:
     - websecure

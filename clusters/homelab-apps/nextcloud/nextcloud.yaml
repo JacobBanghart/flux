@@ -262,6 +262,7 @@ metadata:
 spec:
   entryPoints:
     - websecure
+    - public  # internet-facing: WAN 443 -> traefik-public (10.4.0.203)
   routes:
     - match: Host(`nextcloud.jacobbanghart.com`)
       kind: Rule
