@@ -54,6 +54,14 @@ dns:
         - 10.1.0.142
       home:
         - 10.1.0.142
+      # Private apps with no public record since 2026-11-21 (Pi-hole holds
+      # them, pointing at Traefik's internal VIP 10.4.0.200).
+      passwords.jacobbanghart.com:
+        - 10.1.0.142
+      home.jacobbanghart.com:
+        - 10.1.0.142
+      dashboard.jacobbanghart.com:
+        - 10.1.0.142
   search_domains: []
   extra_records: []
 unix_socket: /var/run/headscale/headscale.sock
