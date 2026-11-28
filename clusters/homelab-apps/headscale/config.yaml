@@ -12,12 +12,29 @@ prefixes:
   v6: fd7a:115c:a1e0::/48
   allocation: sequential
 derp:
+  # Self-hosted relay only. Tailscale's public DERP map is not used (owner's
+  # call, 2026-11-28: no public third-party relays). Peers that can't connect
+  # directly relay through this pod. If the home WAN is down nothing can relay,
+  # but everything worth reaching is at home anyway.
   server:
-    # The embedded relay needs UDP 3478 forwarded through the UDM; not
-    # worth it until Tailscale's public relays become a problem.
-    enabled: false
-  urls:
-    - https://controlplane.tailscale.com/derpmap/default
+    enabled: true
+    region_id: 999
+    region_code: "home"
+    region_name: "Home (Headscale)"
+    # Only nodes registered with this Headscale may use the relay.
+    verify_clients: true
+    # STUN for NAT traversal: Service headscale-stun (MetalLB 10.4.0.204,
+    # externalTrafficPolicy Local so STUN sees real client addresses) behind
+    # the UDM forward WAN UDP 3478 (UnifiTerraform port_forwards.tf).
+    stun_listen_addr: 0.0.0.0:3478
+    # Generated on first start, kept on the data PVC.
+    private_key_path: /var/lib/headscale/derp_server_private.key
+    automatically_add_embedded_derp_region: true
+    # The WAN address (same one external-dns publishes for headscale.), so
+    # clients reach the relay even when their DNS is broken. DERP itself is
+    # HTTPS on server_url, through Traefik's public entrypoint.
+    ipv4: 68.170.78.3
+  urls: []
   paths: []
   auto_update_enabled: true
   update_frequency: 3h

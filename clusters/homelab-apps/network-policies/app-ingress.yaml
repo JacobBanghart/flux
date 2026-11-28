@@ -492,6 +492,15 @@ spec:
               kubernetes.io/metadata.name: monitoring
         # Same-namespace traffic.
         - podSelector: {}
+    # STUN for the embedded DERP relay, published on the MetalLB VIP
+    # 10.4.0.204 with a WAN forward (UnifiTerraform: UDP 3478). Clients hit
+    # the VIP directly, not through Traefik. Only this UDP port is open.
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: UDP
+          port: 3478
 
 ---
 # homestead runs a public game server -- see the game-port rule below.

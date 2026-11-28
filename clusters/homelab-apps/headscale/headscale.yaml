@@ -105,6 +105,9 @@ spec:
               containerPort: 8080
             - name: metrics
               containerPort: 9090
+            - name: stun
+              containerPort: 3478
+              protocol: UDP
           volumeMounts:
             # subPath keeps the default path the in-pod `headscale` CLI reads.
             # subPath files don't live-update; fine, since a config change
@@ -163,6 +166,27 @@ spec:
     - name: http
       port: 8080
       targetPort: http
+---
+# STUN for the embedded DERP relay (config.yaml derp.server). The UDM
+# forwards WAN UDP 3478 here (UnifiTerraform port_forwards.tf).
+apiVersion: v1
+kind: Service
+metadata:
+  name: headscale-stun
+  namespace: headscale
+  annotations:
+    metallb.io/loadBalancerIPs: "10.4.0.204"
+spec:
+  type: LoadBalancer
+  # Local keeps the client's real source address; STUN answers with it.
+  externalTrafficPolicy: Local
+  selector:
+    app: headscale
+  ports:
+    - name: stun
+      port: 3478
+      targetPort: stun
+      protocol: UDP
 ---
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
